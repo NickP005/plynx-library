@@ -12,7 +12,7 @@
 #define PlynxSimpleUserManaged_h
 
 #warning "This user-defined connection is now deprecated."
-#warning "Please use https://github.com/NickP005/plynx-library-arduino/tree/master/examples/More/ArduinoClient examples"
+#warning "Please use https://github.com/NickP005/plynx-library/tree/master/examples/More/ArduinoClient examples"
 
 #ifndef PLYNX_INFO_CONNECTION
 #define PLYNX_INFO_CONNECTION "custom"

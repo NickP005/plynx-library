@@ -1,6 +1,6 @@
 /*************************************************************
   Download latest Plynx library here:
-    https://github.com/NickP005/plynx-library-arduino/releases/latest
+    https://github.com/NickP005/plynx-library/releases/latest
 
   Plynx lets you create beautiful drag-and-drop visual interfaces
   for your projects in 5 minutes. And it works with almost every
@@ -45,7 +45,7 @@
   5. Press Play icon. Enjoy Plynxing!
 
   You can find a QR code for easy setup of this project here:
-  https://github.com/NickP005/plynx-library-arduino/tree/master/examples/GettingStarted/PlynxBlink
+  https://github.com/NickP005/plynx-library/tree/master/examples/GettingStarted/PlynxBlink
 
  *************************************************************/
 

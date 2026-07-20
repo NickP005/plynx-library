@@ -1,6 +1,6 @@
 /*************************************************************
   Download latest Plynx library here:
-    https://github.com/NickP005/plynx-library-arduino/releases/latest
+    https://github.com/NickP005/plynx-library/releases/latest
 
   Plynx is a platform with iOS and Android apps to control
   Arduino, Raspberry Pi and the likes over the Internet.
@@ -55,7 +55,7 @@ void setup()
 
   Plynx.begin(auth);
 
-  Plynx.virtualWrite(V0, "https://raw.githubusercontent.com/NickP005/plynx-library-arduino/master/extras/logo.txt");
+  Plynx.virtualWrite(V0, "https://raw.githubusercontent.com/NickP005/plynx-library/master/extras/logo.txt");
 
   // You can perform HTTPS requests even if your hardware alone can't handle SSL
   // Plynx  can also fetch much bigger messages,

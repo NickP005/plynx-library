@@ -3,7 +3,7 @@ Thanks for using Plynx App :-)
 
 Before opening an issue, please make sure you've read these:
   http://docs.plynx.cc
-  https://github.com/NickP005/plynx-library-arduino/wiki
+  https://github.com/NickP005/plynx-library/wiki
   https://guides.github.com/features/mastering-markdown
 
 Please provide the following information for all issues.

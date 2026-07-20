@@ -7,7 +7,7 @@
 
 2. Download and build Plynx:
     ```bash
-    $ git clone https://github.com/NickP005/plynx-library-arduino.git
+    $ git clone https://github.com/NickP005/plynx-library.git
     $ cd plynx-library/linux
     $ make clean all target=raspberry
     ```

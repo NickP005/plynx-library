@@ -1,6 +1,6 @@
 /*************************************************************
   Download latest Plynx library here:
-    https://github.com/NickP005/plynx-library-arduino/releases/latest
+    https://github.com/NickP005/plynx-library/releases/latest
 
   Plynx is a platform with iOS and Android apps to control
   Arduino, Raspberry Pi and the likes over the Internet.

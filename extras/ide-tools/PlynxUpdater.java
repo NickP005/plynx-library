@@ -43,7 +43,7 @@ import static processing.app.I18n.tr;
 
 public class PlynxUpdater implements Tool {
   private Editor editor;
-  final String lib_url = "https://raw.githubusercontent.com/NickP005/plynx-library-arduino/master/library.properties";
+  final String lib_url = "https://raw.githubusercontent.com/NickP005/plynx-library/master/library.properties";
 
   public void init(Editor editor) {
     this.editor = editor;
@@ -181,7 +181,7 @@ public class PlynxUpdater implements Tool {
         }
 
         final String zip_fn = "Plynx_Release_v" + last_version;
-        final String zip_url = "https://github.com/NickP005/plynx-library-arduino/releases/download/v" + last_version + "/" + zip_fn + ".zip";
+        final String zip_url = "https://github.com/NickP005/plynx-library/releases/download/v" + last_version + "/" + zip_fn + ".zip";
 
         ByteArrayOutputStream zip_os = downloadFile(zip_url);
         File tmpFolder = null;
@@ -229,7 +229,7 @@ public class PlynxUpdater implements Tool {
                 options,
                 options[0]);
             if (result == JOptionPane.YES_OPTION) {
-              Base.openURL(tr("https://github.com/NickP005/plynx-library-arduino/releases/latest"));
+              Base.openURL(tr("https://github.com/NickP005/plynx-library/releases/latest"));
             }
           }
 
