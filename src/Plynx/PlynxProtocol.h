@@ -1,0 +1,557 @@
+/**
+ * @file       PlynxProtocol.h
+ * @author     Volodymyr Shymanskyy
+ * @license    This project is released under the MIT License (MIT)
+ * @copyright  Copyright (c) 2015 Volodymyr Shymanskyy
+ * @date       Jan 2015
+ * @brief      Plynx protocol implementation
+ *
+ */
+
+#ifndef PlynxProtocol_h
+#define PlynxProtocol_h
+
+#include <string.h>
+#include <stdlib.h>
+#include <Plynx/PlynxDebug.h>
+#include <Plynx/PlynxProtocolDefs.h>
+#include <Plynx/PlynxApi.h>
+#include <utility/PlynxUtility.h>
+
+template <class Transp>
+class PlynxProtocol
+    : public PlynxApi< PlynxProtocol<Transp> >
+{
+    friend class PlynxApi< PlynxProtocol<Transp> >;
+public:
+    enum PlynxState {
+        CONNECTING,
+        CONNECTED,
+        DISCONNECTED,
+        TOKEN_INVALID,
+    };
+
+    PlynxProtocol(Transp& transp)
+        : conn(transp)
+        , authkey(NULL)
+        , redir_serv(NULL)
+        , lastActivityIn(0)
+        , lastActivityOut(0)
+        , lastHeartbeat(0)
+        , msgIdOut(0)
+        , msgIdOutOverride(0)
+        , nesting(0)
+        , state(CONNECTING)
+    {}
+
+    bool connected() const { return state == CONNECTED; }
+
+    bool isTokenInvalid() const { return state == TOKEN_INVALID; }
+
+    bool connect(uint32_t timeout = PLYNX_TIMEOUT_MS*3) {
+        conn.disconnect();
+        state = CONNECTING;
+        millis_time_t started = PlynxMillis();
+        while ((state != CONNECTED) &&
+               (PlynxMillis() - started < timeout))
+        {
+            run();
+        }
+        return state == CONNECTED;
+    }
+
+    void disconnect() {
+        conn.disconnect();
+        state = DISCONNECTED;
+        PLYNX_LOG1(PLYNX_F("Disconnected"));
+    }
+
+    bool run(bool avail = false);
+
+    // TODO: Fixme
+    void startSession() {
+        conn.connect();
+        state = CONNECTING;
+        msgIdOut = 0;
+        lastHeartbeat = lastActivityIn = lastActivityOut = (PlynxMillis() - 5000UL);
+    }
+
+    void sendCmd(uint8_t cmd, uint16_t id = 0, const void* data = NULL, size_t length = 0, const void* data2 = NULL, size_t length2 = 0);
+
+    void sendResponse(PlynxStatus rsp, uint16_t id = 0) {
+        sendCmd(PLYNX_CMD_RESPONSE, id, NULL, rsp);
+    }
+
+    void printBanner() {
+#if defined(PLYNX_NO_FANCY_LOGO)
+        PLYNX_LOG1(PLYNX_F("Plynx v" PLYNX_VERSION " on " PLYNX_INFO_DEVICE));
+#else
+        PLYNX_LOG1(PLYNX_F(PLYNX_NEWLINE
+            "    ___  __          __" PLYNX_NEWLINE
+            "   / _ )/ /_ _____  / /__" PLYNX_NEWLINE
+            "  / _  / / // / _ \\/  '_/" PLYNX_NEWLINE
+            " /____/_/\\_, /_//_/_/\\_\\" PLYNX_NEWLINE
+            "        /___/ v" PLYNX_VERSION " on " PLYNX_INFO_DEVICE PLYNX_NEWLINE
+        ));
+#endif
+    }
+
+private:
+
+    void internalReconnect() {
+        state = CONNECTING;
+        conn.disconnect();
+        PlynxOnDisconnected();
+    }
+
+    int readHeader(PlynxHeader& hdr);
+    uint16_t getNextMsgId();
+
+protected:
+    void begin(const char* auth) {
+        this->authkey = auth;
+        lastHeartbeat = lastActivityIn = lastActivityOut = (PlynxMillis() - 5000UL);
+#if !defined(PLYNX_NO_DEFAULT_BANNER)
+        printBanner();
+#endif
+    }
+
+    bool processInput(void);
+
+    Transp& conn;
+
+private:
+    const char* authkey;
+    char*       redir_serv;
+    millis_time_t lastActivityIn;
+    millis_time_t lastActivityOut;
+    union {
+        millis_time_t lastHeartbeat;
+        millis_time_t lastLogin;
+    };
+    uint16_t msgIdOut;
+    uint16_t msgIdOutOverride;
+    uint8_t  nesting;
+protected:
+    PlynxState state;
+};
+
+template <class Transp>
+bool PlynxProtocol<Transp>::run(bool avail)
+{
+    PLYNX_RUN_YIELD();
+
+    if (state == DISCONNECTED) {
+        return false;
+    }
+
+    // Detect nesting
+    PlynxHelperAutoInc guard(nesting);
+    if (msgIdOutOverride || nesting > 2) {
+      //PLYNX_LOG1(PLYNX_F("Nested run() skipped"));
+      return true;
+    }
+
+    if (conn.connected()) {
+        while (avail || conn.available() > 0) {
+            //PLYNX_LOG2(PLYNX_F("Available: "), conn.available());
+            //const unsigned long t = micros();
+            if (!processInput()) {
+                conn.disconnect();
+// TODO: Only when in direct mode?
+#ifdef PLYNX_USE_DIRECT_CONNECT
+                state = CONNECTING;
+#endif
+                PlynxOnDisconnected();
+                return false;
+            }
+            avail = false;
+            //PLYNX_LOG2(PLYNX_F("Proc time: "), micros() - t);
+        }
+    }
+
+    const millis_time_t t = PlynxMillis();
+
+    // Update connection status after running commands
+    const bool tconn = conn.connected();
+
+    if (state == CONNECTED) {
+        if (!tconn) {
+            lastHeartbeat = t;
+            internalReconnect();
+            return false;
+        }
+
+        if (t - lastActivityIn > (1000UL * PLYNX_HEARTBEAT + PLYNX_TIMEOUT_MS*3)) {
+#ifdef PLYNX_DEBUG
+            PLYNX_LOG6(PLYNX_F("Heartbeat timeout: "), t, PLYNX_F(", "), lastActivityIn, PLYNX_F(", "), lastHeartbeat);
+#else
+            PLYNX_LOG1(PLYNX_F("Heartbeat timeout"));
+#endif
+            internalReconnect();
+            return false;
+        } else if ((t - lastActivityIn  > 1000UL * PLYNX_HEARTBEAT ||
+                    t - lastActivityOut > 1000UL * PLYNX_HEARTBEAT) &&
+                    t - lastHeartbeat   > PLYNX_TIMEOUT_MS)
+        {
+            // Send ping if we didn't either send or receive something
+            // for PLYNX_HEARTBEAT seconds
+            sendCmd(PLYNX_CMD_PING);
+            lastHeartbeat = t;
+        }
+    } else if (state == CONNECTING) {
+#ifdef PLYNX_USE_DIRECT_CONNECT
+        if (!tconn)
+            conn.connect();
+#else
+        if (tconn && (t - lastLogin > PLYNX_TIMEOUT_MS)) {
+            PLYNX_LOG1(PLYNX_F("Login timeout"));
+            conn.disconnect();
+            state = CONNECTING;
+            return false;
+        } else if (!tconn && (t - lastLogin > 5000UL)) {
+            conn.disconnect();
+            if (!conn.connect()) {
+                lastLogin = t;
+                return false;
+            }
+
+            msgIdOut = 1;
+            sendCmd(PLYNX_CMD_HW_LOGIN, 1, authkey, strlen(authkey));
+            lastLogin = lastActivityOut;
+            return true;
+        }
+#endif
+    }
+    return true;
+}
+
+template <class Transp>
+PLYNX_FORCE_INLINE
+bool PlynxProtocol<Transp>::processInput(void)
+{
+    PlynxHeader hdr;
+    const int ret = readHeader(hdr);
+
+    if (ret == 0) {
+        return true; // Considered OK (no data on input)
+    }
+
+    if (ret < 0 || hdr.msg_id == 0) {
+#ifdef PLYNX_DEBUG
+        PLYNX_LOG2(PLYNX_F("Bad hdr len: "), ret);
+#endif
+        return false;
+    }
+
+    if (hdr.type == PLYNX_CMD_RESPONSE) {
+        lastActivityIn = PlynxMillis();
+
+#ifndef PLYNX_USE_DIRECT_CONNECT
+        if (state == CONNECTING && (1 == hdr.msg_id)) {
+            switch (hdr.length) {
+            case PLYNX_SUCCESS:
+            case PLYNX_ALREADY_REGISTERED:
+                PLYNX_LOG3(PLYNX_F("Ready (ping: "), lastActivityIn-lastHeartbeat, PLYNX_F("ms)."));
+                lastHeartbeat = lastActivityIn;
+                state = CONNECTED;
+#ifdef PLYNX_DEBUG
+                if (size_t ram = PlynxFreeRam()) {
+                    PLYNX_LOG2(PLYNX_F("Free RAM: "), ram);
+                }
+#endif
+                this->sendInfo();
+                PLYNX_RUN_YIELD();
+                PlynxOnConnected();
+                return true;
+            case PLYNX_INVALID_TOKEN:
+                PLYNX_LOG1(PLYNX_F("Invalid auth token"));
+                state = TOKEN_INVALID;
+                break;
+            default:
+                PLYNX_LOG2(PLYNX_F("Connect failed. code: "), hdr.length);
+            }
+            return false;
+        }
+        if (PLYNX_NOT_AUTHENTICATED == hdr.length) {
+            return false;
+        }
+#endif
+        // TODO: return code may indicate App presence
+        return true;
+    }
+
+    if (hdr.length > PLYNX_MAX_READBYTES) {
+        PLYNX_LOG2(PLYNX_F("Packet too big: "), hdr.length);
+        // TODO: Flush
+        internalReconnect();
+        return true;
+    }
+
+    uint8_t inputBuffer[hdr.length+1]; // Add 1 to zero-terminate
+    if (hdr.length != conn.read(inputBuffer, hdr.length)) {
+#ifdef PLYNX_DEBUG
+        PLYNX_LOG1(PLYNX_F("Can't read body"));
+#endif
+        return false;
+    }
+    inputBuffer[hdr.length] = '\0';
+
+    PLYNX_DBG_DUMP(">", inputBuffer, hdr.length);
+
+    lastActivityIn = PlynxMillis();
+
+    switch (hdr.type)
+    {
+    case PLYNX_CMD_LOGIN:
+    case PLYNX_CMD_HW_LOGIN: {
+#ifdef PLYNX_USE_DIRECT_CONNECT
+        if (strncmp(authkey, (char*)inputBuffer, 32)) {
+            PLYNX_LOG1(PLYNX_F("Invalid token"));
+            sendResponse(PLYNX_INVALID_TOKEN, hdr.msg_id);
+            break;
+        }
+#endif
+        if (state == CONNECTING) {
+            PLYNX_LOG1(PLYNX_F("Ready"));
+            state = CONNECTED;
+#ifdef PLYNX_DEBUG
+            if (size_t ram = PlynxFreeRam()) {
+                PLYNX_LOG2(PLYNX_F("Free RAM: "), ram);
+            }
+#endif
+            this->sendInfo();
+            PLYNX_RUN_YIELD();
+            PlynxOnConnected();
+        }
+        sendResponse(PLYNX_SUCCESS, hdr.msg_id);
+    } break;
+    case PLYNX_CMD_PING: {
+        sendResponse(PLYNX_SUCCESS, hdr.msg_id);
+    } break;
+    case PLYNX_CMD_REDIRECT: {
+        if (!redir_serv) {
+             redir_serv = (char*)malloc(64);
+        }
+        PlynxParam param(inputBuffer, hdr.length);
+        uint16_t redir_port = PLYNX_DEFAULT_PORT;
+
+        PlynxParam::iterator it = param.begin();
+        if (it >= param.end())
+            return false;
+
+        strncpy(redir_serv, it.asStr(), 64);
+        redir_serv[63] = '\0';
+
+        if (++it < param.end())
+            redir_port = it.asLong();
+        PLYNX_LOG4(PLYNX_F("Redirecting to "), redir_serv, ':', redir_port);
+        conn.disconnect();
+        conn.begin(redir_serv, redir_port);
+        state = CONNECTING;
+        lastHeartbeat = lastActivityIn = lastActivityOut = (PlynxMillis() - 5000UL);
+    } break;
+    case PLYNX_CMD_HARDWARE:
+    case PLYNX_CMD_BRIDGE: {
+        msgIdOutOverride = hdr.msg_id;
+        this->processCmd(inputBuffer, hdr.length);
+        msgIdOutOverride = 0;
+    } break;
+    case PLYNX_CMD_INTERNAL: {
+        PlynxReq req = { 0 };
+        PlynxParam param(inputBuffer, hdr.length);
+        PlynxParam::iterator it = param.begin();
+        if (it >= param.end())
+            return true;
+
+        uint32_t cmd32;
+        memcpy(&cmd32, it.asStr(), sizeof(cmd32));
+
+        ++it;
+        char* start = (char*)(it).asStr();
+        unsigned length = hdr.length - (start - (char*)inputBuffer);
+        PlynxParam param2(start, length);
+
+        msgIdOutOverride = hdr.msg_id;
+        switch (cmd32) {
+        case PLYNX_INT_RTC:  PlynxWidgetWriteInternalPinRTC(req, param2);    break;
+        case PLYNX_INT_UTC:  PlynxWidgetWriteInternalPinUTC(req, param2);    break;
+        case PLYNX_INT_OTA:  PlynxWidgetWriteInternalPinOTA(req, param2);    break;
+        case PLYNX_INT_ACON: PlynxWidgetWriteInternalPinACON(req, param2);   break;
+        case PLYNX_INT_ADIS: PlynxWidgetWriteInternalPinADIS(req, param2);   break;
+        case PLYNX_INT_META: PlynxWidgetWriteInternalPinMETA(req, param2);   break;
+        case PLYNX_INT_VFS:  PlynxWidgetWriteInternalPinVFS(req, param2);    break;
+        case PLYNX_INT_DBG:  PlynxWidgetWriteInternalPinDBG(req, param2);    break;
+#ifdef PLYNX_DEBUG
+        default:             PLYNX_LOG2(PLYNX_F("Invalid internal cmd:"), param.asStr());
+#endif
+        }
+        msgIdOutOverride = 0;
+    } break;
+    case PLYNX_CMD_DEBUG_PRINT: {
+        if (hdr.length) {
+            PLYNX_LOG2(PLYNX_F("Server: "), (char*)inputBuffer);
+        }
+    } break;
+    default: {
+#ifdef PLYNX_DEBUG
+        PLYNX_LOG2(PLYNX_F("Invalid header type: "), hdr.type);
+#endif
+        // TODO: Flush
+        internalReconnect();
+    } break;
+    }
+
+    return true;
+}
+
+template <class Transp>
+int PlynxProtocol<Transp>::readHeader(PlynxHeader& hdr)
+{
+    size_t rlen = conn.read(&hdr, sizeof(hdr));
+    if (rlen == 0) {
+        return 0;
+    }
+
+    if (sizeof(hdr) != rlen) {
+        return -1;
+    }
+
+    PLYNX_DBG_DUMP(">", &hdr, sizeof(PlynxHeader));
+
+    hdr.msg_id = ntohs(hdr.msg_id);
+    hdr.length = ntohs(hdr.length);
+
+    return rlen;
+}
+
+#ifndef PLYNX_SEND_THROTTLE
+#define PLYNX_SEND_THROTTLE 0
+#endif
+
+#ifndef PLYNX_SEND_CHUNK
+#define PLYNX_SEND_CHUNK 1024 // Just a big number
+#endif
+
+template <class Transp>
+void PlynxProtocol<Transp>::sendCmd(uint8_t cmd, uint16_t id, const void* data, size_t length, const void* data2, size_t length2)
+{
+    if (!conn.connected() || (cmd != PLYNX_CMD_RESPONSE && cmd != PLYNX_CMD_PING && cmd != PLYNX_CMD_LOGIN && cmd != PLYNX_CMD_HW_LOGIN && state != CONNECTED) ) {
+#ifdef PLYNX_DEBUG_ALL
+        PLYNX_LOG2(PLYNX_F("Cmd skipped:"), cmd);
+#endif
+        return;
+    }
+
+    if (0 == id) {
+        id = getNextMsgId();
+    }
+
+#if defined(PLYNX_MSG_LIMIT) && PLYNX_MSG_LIMIT > 0
+    if (cmd >= PLYNX_CMD_TWEET && cmd <= PLYNX_CMD_HARDWARE) {
+        const millis_time_t allowed_time = PlynxMax(lastActivityOut, lastActivityIn) + 1000/PLYNX_MSG_LIMIT;
+        int32_t wait_time = allowed_time - PlynxMillis();
+        if (wait_time >= 0) {
+#ifdef PLYNX_DEBUG_ALL
+            PLYNX_LOG2(PLYNX_F("Waiting:"), wait_time);
+#endif
+            while (wait_time >= 0) {
+                run();
+                wait_time = allowed_time - PlynxMillis();
+            }
+        } else if (nesting == 0) {
+            run();
+        }
+    }
+#endif
+
+    const size_t full_length = (sizeof(PlynxHeader)) +
+                               (data  ? length  : 0) +
+                               (data2 ? length2 : 0);
+
+#if defined(PLYNX_SEND_ATOMIC) || defined(ESP8266) || defined(ESP32) || defined(SPARK) || defined(PARTICLE) || defined(ENERGIA)
+    // Those have more RAM and like single write at a time...
+
+    uint8_t buff[full_length];
+
+    PlynxHeader* hdr = (PlynxHeader*)buff;
+    hdr->type = cmd;
+    hdr->msg_id = htons(id);
+    hdr->length = htons(length+length2);
+
+    size_t pos = sizeof(PlynxHeader);
+    if (data && length) {
+        memcpy(buff + pos, data, length);
+        pos += length;
+    }
+    if (data2 && length2) {
+        memcpy(buff + pos, data2, length2);
+    }
+
+    size_t wlen = 0;
+    while (wlen < full_length) {
+        const size_t chunk = PlynxMin(size_t(PLYNX_SEND_CHUNK), full_length - wlen);
+        PLYNX_DBG_DUMP("<", buff + wlen, chunk);
+        const size_t w = conn.write(buff + wlen, chunk);
+        PlynxDelay(PLYNX_SEND_THROTTLE);
+        if (w == 0) {
+#ifdef PLYNX_DEBUG
+            PLYNX_LOG1(PLYNX_F("Cmd error"));
+#endif
+            conn.disconnect();
+            state = CONNECTING;
+            PlynxOnDisconnected();
+            return;
+        }
+        wlen += w;
+    }
+
+#else
+
+    PlynxHeader hdr;
+    hdr.type = cmd;
+    hdr.msg_id = htons(id);
+    hdr.length = htons(length+length2);
+
+    PLYNX_DBG_DUMP("<", &hdr, sizeof(hdr));
+    size_t wlen = conn.write(&hdr, sizeof(hdr));
+    PlynxDelay(PLYNX_SEND_THROTTLE);
+
+    if (cmd != PLYNX_CMD_RESPONSE) {
+        if (length) {
+            PLYNX_DBG_DUMP("<", data, length);
+            wlen += conn.write(data, length);
+            PlynxDelay(PLYNX_SEND_THROTTLE);
+        }
+        if (length2) {
+            PLYNX_DBG_DUMP("<", data2, length2);
+            wlen += conn.write(data2, length2);
+            PlynxDelay(PLYNX_SEND_THROTTLE);
+        }
+    }
+
+#endif
+
+    if (wlen != full_length) {
+#ifdef PLYNX_DEBUG
+        PLYNX_LOG4(PLYNX_F("Sent "), wlen, '/', full_length);
+#endif
+        internalReconnect();
+        return;
+    }
+
+    lastActivityOut = PlynxMillis();
+
+}
+
+template <class Transp>
+uint16_t PlynxProtocol<Transp>::getNextMsgId()
+{
+    if (msgIdOutOverride != 0)
+        return msgIdOutOverride;
+    if (++msgIdOut == 0)
+        msgIdOut = 1;
+    return msgIdOut;
+}
+
+#endif
