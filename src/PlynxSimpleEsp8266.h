@@ -25,6 +25,9 @@
 #include <Plynx/PlynxProtocol.h>
 #include <Adapters/PlynxArduinoClient.h>
 #include <ESP8266WiFi.h>
+#ifndef PLYNX_NO_PROVISION
+#include <Plynx/PlynxProvision.h>
+#endif
 
 class PlynxWifi
     : public PlynxProtocol<PlynxArduinoClient>
@@ -93,6 +96,53 @@ public:
         config(auth, ip, port);
         while(this->connect() != true) {}
     }
+
+#ifndef PLYNX_NO_PROVISION
+    /**
+     * Token-less begin: "one flash fits all".
+     *  - saved config valid -> connect as usual;
+     *  - none (or WiFi/token turn out bad) -> SoftAP "Plynx-XXXX" that the
+     *    Plynx app finds and configures. See Plynx/PlynxProvision.h.
+     * Classic begin(auth, ssid, pass) users pay zero bytes for this: the
+     * linker drops everything below when begin() is never called.
+     */
+    void begin()
+    {
+        // Function-local static: alive forever once used (the protocol keeps
+        // a pointer to the token), zero RAM when the sketch never calls this.
+        static PlynxProvConfig cfg;
+
+        for (;;) {
+            if (PlynxProvisioner::load(cfg)) {
+                if (PlynxProvisioner::connectBounded(cfg.ssid, cfg.pass,
+                                                     PLYNX_PROV_WIFI_TIMEOUT_MS)) {
+                    config(cfg.token, cfg.host, cfg.port);
+                    while (this->connect() != true) {
+                        if (this->isTokenInvalid()) {
+                            cfg.lastError = PLYNX_PROV_ERR_TOKEN;
+                            break;
+                        }
+                    }
+                    if (this->connected()) {
+                        return;
+                    }
+                } else {
+                    // Saved WiFi unreachable (moved house? typo?): back to AP,
+                    // /status will say why.
+                    cfg.lastError = PLYNX_PROV_ERR_NETWORK;
+                }
+            }
+            PlynxProvisioner::run(cfg);   // blocks; reboots on save or timeout
+        }
+    }
+
+    /// Factory reset for the auto mode (wire to a long-press button).
+    void resetProvisioning()
+    {
+        PlynxProvisioner::clear();
+        ESP.restart();
+    }
+#endif // PLYNX_NO_PROVISION
 
 };
 
