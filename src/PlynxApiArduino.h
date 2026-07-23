@@ -52,6 +52,18 @@ void PlynxApi<Proto>::sendInfo()
         }
     }
 #endif
+#ifdef PLYNX_PROJECT
+    // Slice 3 pairing: ID del progetto pubblicato (catalogo Plynx) dichiarato
+    // dallo sketch; viaggia nel blnkinf a ogni connect (server e BLE), così
+    // l'app può proporre il canvas pronto anche fuori dal provisioning SoftAP.
+    // Nota: buffer dinamico 64B condiviso con "tmpl" — tenere l'ID <=32 char.
+    {
+        const char* proj = PLYNX_PROJECT;
+        if (proj && strlen(proj)) {
+            profile_dyn.add_key("proj", proj);
+        }
+    }
+#endif
 
 #ifdef PLYNX_HAS_PROGMEM
     char mem[profile_len];

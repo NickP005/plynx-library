@@ -206,6 +206,13 @@ public:
                 }
                 client.print(F("\",\"board\":\""));
                 client.print(ssidBuff);
+#ifdef PLYNX_PROJECT
+                // Slice 3 pairing: lo sketch dichiara l'ID del progetto
+                // pubblicato (catalogo Plynx) da montare al pairing. Campo
+                // opzionale: le app vecchie lo ignorano (Decodable), senza
+                // define non viene emesso alcun byte.
+                client.print(F("\",\"project\":\"" PLYNX_PROJECT));
+#endif
                 client.print(F("\",\"fw\":\"" PLYNX_VERSION "\"}\n"));
                 client.stop();
                 continue;

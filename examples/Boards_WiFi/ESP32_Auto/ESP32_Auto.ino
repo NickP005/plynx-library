@@ -24,6 +24,11 @@
 
 #define PLYNX_PRINT Serial
 
+// Optional: ship a ready-made dashboard with this sketch. Set the ID of a
+// project published in the Plynx public catalog and the app will offer its
+// canvas right at pairing (kits & tutorials: flash + pair = working UI).
+//#define PLYNX_PROJECT "your-published-project-id"
+
 #include <PlynxSimpleEsp32.h>
 
 void setup()
