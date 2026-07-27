@@ -17,7 +17,7 @@
 
 #define PLYNX_SEND_ATOMIC
 #define PLYNX_SEND_CHUNK 20
-//#define PLYNX_SEND_THROTTLE 20
+#define PLYNX_SEND_THROTTLE 20
 
 #include <PlynxApiArduino.h>
 #include <Plynx/PlynxProtocol.h>
@@ -127,10 +127,18 @@ private:
     void onDisconnect(BLEServer* pServer);
 
     void onWrite(BLECharacteristic *pCharacteristic) {
+      // Dal core ESP32 3.x getValue() ritorna Arduino String, non std::string:
+      // senza questa guardia lo sketch NON COMPILA sul core installato oggi di
+      // default (String non converte a std::string e non ha .data()).
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && (ESP_ARDUINO_VERSION_MAJOR >= 3)
+      String rxValue = pCharacteristic->getValue();
+      uint8_t* data = (uint8_t*)rxValue.c_str();
+#else
       std::string rxValue = pCharacteristic->getValue();
+      uint8_t* data = (uint8_t*)rxValue.data();
+#endif
 
       if (rxValue.length() > 0) {
-        uint8_t* data = (uint8_t*)rxValue.data();
         size_t len = rxValue.length();
 
         PLYNX_DBG_DUMP(">> ", data, len);
@@ -189,6 +197,13 @@ void PlynxTransportEsp32_BLE::onDisconnect(BLEServer* pServer) {
   PLYNX_LOG1(PLYNX_F("BLE disconnect"));
   Plynx.disconnect();
   disconnect();
+  // Ricomincia ad annunciarsi, altrimenti la scheda e collegabile UNA SOLA
+  // volta per accensione: il core non riparte da solo (m_advertiseOnDisconnect
+  // e false) e dopo un blocco schermo o un allontanamento la scheda spariva
+  // dalla scansione finche non la si resettava a mano.
+  if (pServer) {
+    pServer->startAdvertising();
+  }
 }
 
 
