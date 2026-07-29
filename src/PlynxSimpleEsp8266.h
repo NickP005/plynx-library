@@ -21,6 +21,21 @@
 #error Please update your ESP8266 Arduino Core
 #endif
 
+#ifndef PLYNX_NO_PROVISION
+// blnkinf "cm" flag: the connection manager (SoftAP provisioning) is
+// compiled in. Must be defined BEFORE PlynxApiArduino.h, where the
+// preprocessor builds the blnkinf profile string.
+#define PLYNX_HAS_CONNECTION_MANAGER
+#endif
+
+#ifndef PLYNX_NO_OTA
+// Built-in OTA handler (Plynx/PlynxOta.h, included at the bottom).
+// Must be defined BEFORE PlynxProtocol.h: it enables the OTA dispatch.
+// No automatic rollback on ESP8266 (single-slot Updater); opt out with
+// #define PLYNX_NO_OTA.
+#define PLYNX_OTA_HAS_DEFAULT
+#endif
+
 #include <PlynxApiArduino.h>
 #include <Plynx/PlynxProtocol.h>
 #include <Adapters/PlynxArduinoClient.h>
@@ -149,6 +164,11 @@ public:
 static WiFiClient _plynxWifiClient;
 static PlynxArduinoClient _plynxTransport(_plynxWifiClient);
 PlynxWifi Plynx(_plynxTransport);
+
+#ifdef PLYNX_OTA_HAS_DEFAULT
+// Needs the global Plynx object above (disconnect/startSession).
+#include <Plynx/PlynxOta.h>
+#endif
 
 #include <PlynxWidgets.h>
 

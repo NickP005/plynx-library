@@ -37,6 +37,13 @@ void PlynxApi<Proto>::sendInfo()
 #ifdef PLYNX_FIRMWARE_VERSION
         PLYNX_PARAM_KV("fw"     , PLYNX_FIRMWARE_VERSION)
 #endif
+#ifdef PLYNX_HAS_CONNECTION_MANAGER
+        // "cm": the connection manager (SoftAP provisioning) is compiled in.
+        // The server's OTA upload warns when a .bin lacks this flag: a
+        // hardcoded token would overwrite a paired board's credentials on
+        // update. Legacy parsers just skip unknown keys.
+        PLYNX_PARAM_KV("cm"     , "1")
+#endif
         PLYNX_PARAM_KV("build"  , __DATE__ " " __TIME__)
         "\0"
     ;

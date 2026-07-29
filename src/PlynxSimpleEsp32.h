@@ -17,6 +17,20 @@
 
 #define PLYNX_SEND_ATOMIC
 
+#ifndef PLYNX_NO_PROVISION
+// blnkinf "cm" flag: the connection manager (SoftAP provisioning) is
+// compiled in. Must be defined BEFORE PlynxApiArduino.h, where the
+// preprocessor builds the blnkinf profile string.
+#define PLYNX_HAS_CONNECTION_MANAGER
+#endif
+
+#ifndef PLYNX_NO_OTA
+// Built-in OTA handler (Plynx/PlynxOta.h, included at the bottom).
+// Must be defined BEFORE PlynxProtocol.h: it enables the OTA dispatch and
+// the pending-confirm/rollback hooks. Opt out with #define PLYNX_NO_OTA.
+#define PLYNX_OTA_HAS_DEFAULT
+#endif
+
 #include <PlynxApiArduino.h>
 #include <Plynx/PlynxProtocol.h>
 #include <Adapters/PlynxArduinoClient.h>
@@ -44,6 +58,11 @@ public:
             WiFi.begin(ssid);
         }
         while (WiFi.status() != WL_CONNECTED) {
+#ifdef PLYNX_OTA_HAS_DEFAULT
+            // Rollback watchdog must run even if the freshly-flashed
+            // firmware cannot join WiFi (e.g. wrong compiled-in credentials).
+            PlynxOtaTick();
+#endif
             PlynxDelay(500);
         }
         PLYNX_LOG1(PLYNX_F("Connected to WiFi"));
@@ -143,6 +162,11 @@ public:
 static WiFiClient _plynxWifiClient;
 static PlynxArduinoClient _plynxTransport(_plynxWifiClient);
 PlynxWifi Plynx(_plynxTransport);
+
+#ifdef PLYNX_OTA_HAS_DEFAULT
+// Needs the global Plynx object above (disconnect/startSession).
+#include <Plynx/PlynxOta.h>
+#endif
 
 #include <PlynxWidgets.h>
 

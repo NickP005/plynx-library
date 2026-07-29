@@ -115,6 +115,11 @@ public:
     bool connected() { YIELD_FIX(); return isConn && client->connected(); }
     int available() {  YIELD_FIX(); return client->available(); }
 
+    // Configured endpoint, read-only (used by the built-in OTA to pin the
+    // firmware download host to the server the sketch talks to).
+    const char* getDomain() const { return domain; }
+    IPAddress   getIP()     const { return addr;   }
+
 protected:
     Client*     client;
     IPAddress   addr;

@@ -32,6 +32,14 @@
   #include <EEPROM.h>
 #endif
 
+// blnkinf "cm" flag: connection manager compiled in. NOTE: what actually
+// puts "cm" in the profile is the define being visible BEFORE
+// PlynxApiArduino.h is read; the ESP shells take care of that. This one only
+// covers exotic sketches that include this header directly and early.
+#ifndef PLYNX_HAS_CONNECTION_MANAGER
+#define PLYNX_HAS_CONNECTION_MANAGER
+#endif
+
 // Well-known setup PSK: obfuscation + iOS auto-join, not secrecy. The
 // provisioning window is short and the token only travels TO the board.
 #ifndef PLYNX_PROV_AP_PASS
@@ -60,6 +68,13 @@ enum PlynxProvError : uint8_t {
     PLYNX_PROV_ERR_NETWORK = 1,   // saved WiFi unreachable / wrong password
     PLYNX_PROV_ERR_TOKEN   = 2,   // server rejected the auth token
 };
+
+#ifdef PLYNX_OTA_HAS_DEFAULT
+// Built-in OTA pending-confirm watchdog (see Plynx/PlynxOta.h): must also
+// tick while the token-less path waits for WiFi, or a fresh firmware that
+// cannot rejoin the network would never roll back.
+void PlynxOtaTick();
+#endif
 
 struct PlynxProvConfig {
     uint32_t magic;
@@ -151,6 +166,9 @@ public:
             if (millis() - started > timeoutMs) {
                 return false;
             }
+#ifdef PLYNX_OTA_HAS_DEFAULT
+            PlynxOtaTick();
+#endif
             PlynxDelay(250);
         }
         return true;

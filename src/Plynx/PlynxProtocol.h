@@ -18,6 +18,16 @@
 #include <Plynx/PlynxApi.h>
 #include <utility/PlynxUtility.h>
 
+#ifdef PLYNX_OTA_HAS_DEFAULT
+// Built-in OTA (Plynx/PlynxOta.h, ESP32/ESP8266 only; the ESP shells define
+// PLYNX_OTA_HAS_DEFAULT before including this header and pull the
+// implementation in at the bottom, after the global Plynx object exists).
+// Other platforms / PLYNX_NO_OTA: these hooks vanish, zero cost.
+void PlynxOtaTick();                                      // pending-confirm watchdog
+void PlynxOtaAuthOk();                                    // authenticated handshake -> confirm
+void PlynxOtaDispatch(PlynxReq& req, const PlynxParam& param); // default OTA handler (user override wins)
+#endif
+
 template <class Transp>
 class PlynxProtocol
     : public PlynxApi< PlynxProtocol<Transp> >
@@ -47,6 +57,12 @@ public:
     bool connected() const { return state == CONNECTED; }
 
     bool isTokenInvalid() const { return state == TOKEN_INVALID; }
+
+#ifdef PLYNX_OTA_HAS_DEFAULT
+    // Read-only view of the transport for the built-in OTA (PlynxOta.h):
+    // the expected firmware download host is the configured server endpoint.
+    const Transp& transportConn() const { return conn; }
+#endif
 
     bool connect(uint32_t timeout = PLYNX_TIMEOUT_MS*3) {
         conn.disconnect();
@@ -140,6 +156,10 @@ template <class Transp>
 bool PlynxProtocol<Transp>::run(bool avail)
 {
     PLYNX_RUN_YIELD();
+
+#ifdef PLYNX_OTA_HAS_DEFAULT
+    PlynxOtaTick();
+#endif
 
     if (state == DISCONNECTED) {
         return false;
@@ -255,6 +275,9 @@ bool PlynxProtocol<Transp>::processInput(void)
                 PLYNX_LOG3(PLYNX_F("Ready (ping: "), lastActivityIn-lastHeartbeat, PLYNX_F("ms)."));
                 lastHeartbeat = lastActivityIn;
                 state = CONNECTED;
+#ifdef PLYNX_OTA_HAS_DEFAULT
+                PlynxOtaAuthOk();
+#endif
 #ifdef PLYNX_DEBUG
                 if (size_t ram = PlynxFreeRam()) {
                     PLYNX_LOG2(PLYNX_F("Free RAM: "), ram);
@@ -315,6 +338,9 @@ bool PlynxProtocol<Transp>::processInput(void)
         if (state == CONNECTING) {
             PLYNX_LOG1(PLYNX_F("Ready"));
             state = CONNECTED;
+#ifdef PLYNX_OTA_HAS_DEFAULT
+            PlynxOtaAuthOk();
+#endif
 #ifdef PLYNX_DEBUG
             if (size_t ram = PlynxFreeRam()) {
                 PLYNX_LOG2(PLYNX_F("Free RAM: "), ram);
@@ -376,7 +402,13 @@ bool PlynxProtocol<Transp>::processInput(void)
         switch (cmd32) {
         case PLYNX_INT_RTC:  PlynxWidgetWriteInternalPinRTC(req, param2);    break;
         case PLYNX_INT_UTC:  PlynxWidgetWriteInternalPinUTC(req, param2);    break;
+#ifdef PLYNX_OTA_HAS_DEFAULT
+        // Built-in OTA; a sketch-level PLYNX_WRITE(InternalPinOTA) override
+        // is detected inside the dispatch and still wins.
+        case PLYNX_INT_OTA:  PlynxOtaDispatch(req, param2);                  break;
+#else
         case PLYNX_INT_OTA:  PlynxWidgetWriteInternalPinOTA(req, param2);    break;
+#endif
         case PLYNX_INT_ACON: PlynxWidgetWriteInternalPinACON(req, param2);   break;
         case PLYNX_INT_ADIS: PlynxWidgetWriteInternalPinADIS(req, param2);   break;
         case PLYNX_INT_META: PlynxWidgetWriteInternalPinMETA(req, param2);   break;
