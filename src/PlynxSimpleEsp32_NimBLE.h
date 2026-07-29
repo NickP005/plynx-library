@@ -73,8 +73,16 @@ public:
 
         pCharacteristicRX->setCallbacks(this);
 
+        // NimBLE-Arduino 2.x ha rinominato meta' dell'API (security, scan
+        // response, firme dei callback): senza queste guardie l'header non
+        // compila con la 2.x, che e' quella che installa oggi il Library
+        // Manager. NIMBLE_CPP_VERSION_MAJOR esiste solo dalla 2.0 in poi.
+#if defined(NIMBLE_CPP_VERSION_MAJOR) && (NIMBLE_CPP_VERSION_MAJOR >= 2)
+        NimBLEDevice::setSecurityAuth(true, false, false); // bonding, come ESP_LE_AUTH_BOND
+#else
         auto pSecurity = new NimBLESecurity();
         pSecurity->setAuthenticationMode(ESP_LE_AUTH_BOND);
+#endif
 
         // Start the service
         pService->start();
@@ -82,7 +90,11 @@ public:
         // Start advertising
         pServer->getAdvertising()->addServiceUUID(pService->getUUID());
         pServer->getAdvertising()->setAppearance(0x00);
+#if defined(NIMBLE_CPP_VERSION_MAJOR) && (NIMBLE_CPP_VERSION_MAJOR >= 2)
+        pServer->getAdvertising()->enableScanResponse(true);
+#else
         pServer->getAdvertising()->setScanResponse(true);
+#endif
         pServer->getAdvertising()->start();
     }
 
@@ -125,23 +137,31 @@ public:
 
 private:
 
+#if defined(NIMBLE_CPP_VERSION_MAJOR) && (NIMBLE_CPP_VERSION_MAJOR >= 2)
+    void onConnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo) override;
+    void onDisconnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo, int reason) override;
+
+    void onWrite(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo) override {
+      handleRx(pCharacteristic);
+    }
+#else
     void onConnect(NimBLEServer* pServer);
     void onDisconnect(NimBLEServer* pServer);
 
     void onWrite(BLECharacteristic *pCharacteristic) {
-      // Vedi PlynxSimpleEsp32_BLE.h: dal core ESP32 3.x getValue() ritorna
-      // Arduino String, non std::string, e senza guardia non compila.
-#if defined(ESP_ARDUINO_VERSION_MAJOR) && (ESP_ARDUINO_VERSION_MAJOR >= 3)
-      String rxValue = pCharacteristic->getValue();
-      uint8_t* data = (uint8_t*)rxValue.c_str();
-#else
-      std::string rxValue = pCharacteristic->getValue();
-      uint8_t* data = (uint8_t*)rxValue.data();
+      handleRx(pCharacteristic);
+    }
 #endif
 
-      if (rxValue.length() > 0) {
-        size_t len = rxValue.length();
+    void handleRx(NimBLECharacteristic* pCharacteristic) {
+      // NimBLEAttValue porta puntatore e LUNGHEZZA: niente conversioni via
+      // stringa sul payload binario (il protocollo ha byte 0x00 nell'header,
+      // qualsiasi giro da C-string tronca il frame al primo NUL).
+      NimBLEAttValue rxValue = pCharacteristic->getValue();
+      const uint8_t* data = rxValue.data();
+      size_t len = rxValue.length();
 
+      if (len > 0) {
         PLYNX_DBG_DUMP(">> ", data, len);
         mBuffRX.put(data, len);
       }
@@ -186,6 +206,29 @@ public:
 static PlynxTransportEsp32_NimBLE _plynxTransportBLE;
 PlynxEsp32_NimBLE Plynx(_plynxTransportBLE);
 
+#if defined(NIMBLE_CPP_VERSION_MAJOR) && (NIMBLE_CPP_VERSION_MAJOR >= 2)
+
+inline
+void PlynxTransportEsp32_NimBLE::onConnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo) {
+  PLYNX_LOG1(PLYNX_F("BLE connect"));
+  connect();
+  Plynx.startSession();
+}
+
+inline
+void PlynxTransportEsp32_NimBLE::onDisconnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo, int reason) {
+  PLYNX_LOG1(PLYNX_F("BLE disconnect"));
+  Plynx.disconnect();
+  disconnect();
+  // Senza questo la scheda e collegabile una sola volta per accensione
+  // (vedi PlynxSimpleEsp32_BLE.h).
+  if (pServer) {
+    pServer->startAdvertising();
+  }
+}
+
+#else
+
 inline
 void PlynxTransportEsp32_NimBLE::onConnect(NimBLEServer* pServer) {
   PLYNX_LOG1(PLYNX_F("BLE connect"));
@@ -204,6 +247,8 @@ void PlynxTransportEsp32_NimBLE::onDisconnect(NimBLEServer* pServer) {
     pServer->startAdvertising();
   }
 }
+
+#endif
 
 
 #include <PlynxWidgets.h>
