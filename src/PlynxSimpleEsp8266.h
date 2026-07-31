@@ -36,6 +36,11 @@
 #define PLYNX_OTA_HAS_DEFAULT
 #endif
 
+// blnkinf "ota-max"/"flash"/"sk-size": how big an OTA image this board can
+// take. Must come after the PLYNX_OTA_HAS_DEFAULT decision above and before
+// PlynxApiArduino.h, which assembles the profile.
+#include <Plynx/PlynxFlashInfo.h>
+
 #include <PlynxApiArduino.h>
 #include <Plynx/PlynxProtocol.h>
 #include <Adapters/PlynxArduinoClient.h>

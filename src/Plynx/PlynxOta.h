@@ -409,7 +409,14 @@ static bool plynxOtaFlashBegin(uint32_t size)
     return Update.begin(size ? size : UPDATE_SIZE_UNKNOWN);
 #else
     // Spec: verify free sketch space BEFORE starting.
+    // Same number the board reports as "ota-max" in blnkinf, so the server's
+    // verdict and the board's verdict can never disagree by a page: keep the
+    // macro as the single source (Plynx/PlynxFlashInfo.h).
+#if defined(PLYNX_INFO_OTA_MAX)
+    const uint32_t space = (uint32_t)(PLYNX_INFO_OTA_MAX);
+#else
     const uint32_t space = (ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000;
+#endif
     if (size > space) {
         return false;
     }
@@ -469,7 +476,9 @@ static void plynxOtaPerform(const char* url, const char* shaHex, uint32_t declar
 
 #if defined(ESP8266)
     if (declaredSize && ESP.getFreeSketchSpace() < declaredSize) {
-        // Fail fast, before dropping the cloud link.
+        // Fail fast, before dropping the cloud link. Last line of defence:
+        // a server that reads "ota-max" from blnkinf refuses an oversized
+        // image before it ever reaches us (an old server does not).
         PLYNX_LOG1(PLYNX_F("OTA: image larger than free sketch space"));
         return;
     }

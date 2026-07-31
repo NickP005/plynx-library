@@ -49,7 +49,17 @@ void PlynxApi<Proto>::sendInfo()
     ;
     const size_t profile_len = sizeof(profile)-8-2;
 
+#if defined(PLYNX_INFO_OTA_MAX) || defined(PLYNX_INFO_FLASH_TOTAL)
+    // The flash keys (see Plynx/PlynxFlashInfo.h) add up to ~49 bytes on top
+    // of tmpl+proj. 64 was already tight for those two alone, and an
+    // overflow here is not benign: PlynxParam::add_key() writes the key and
+    // then silently drops the value, so the server -- which pairs the block
+    // key/value -- would misread everything after it. Stack only (ESP), zero
+    // flash, and it leaves room for tmpl/proj well past the 32-char advice.
+    char mem_dyn[160];
+#else
     char mem_dyn[64];
+#endif
     PlynxParam profile_dyn(mem_dyn, 0, sizeof(mem_dyn));
 #ifdef PLYNX_TEMPLATE_ID
     {
@@ -70,6 +80,20 @@ void PlynxApi<Proto>::sendInfo()
             profile_dyn.add_key("proj", proj);
         }
     }
+#endif
+    // Flash/OTA capabilities, always last (Plynx/PlynxFlashInfo.h, ESP only).
+    // They tell the server how big an image this board can really take, so a
+    // too-large .bin is refused before the user ever presses "update".
+    // Runtime values: they live here, never in the PROGMEM literal that the
+    // server parses out of a .bin file.
+#ifdef PLYNX_INFO_OTA_MAX
+    profile_dyn.add_key("ota-max", (unsigned long)(PLYNX_INFO_OTA_MAX));
+#endif
+#ifdef PLYNX_INFO_FLASH_TOTAL
+    profile_dyn.add_key("flash",   (unsigned long)(PLYNX_INFO_FLASH_TOTAL));
+#endif
+#ifdef PLYNX_INFO_FLASH_SKETCH
+    profile_dyn.add_key("sk-size", (unsigned long)(PLYNX_INFO_FLASH_SKETCH));
 #endif
 
 #ifdef PLYNX_HAS_PROGMEM
