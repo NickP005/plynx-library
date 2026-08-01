@@ -56,7 +56,7 @@ void loop() {
 }
 
 // Next functions are optional.
-// Add ZeRGBa Widget on V0 to control onboard LED.
+// Add an RGB Picker widget on V0 to control onboard LED.
 PLYNX_CONNECTED() {
   RGB.control(true);
 }

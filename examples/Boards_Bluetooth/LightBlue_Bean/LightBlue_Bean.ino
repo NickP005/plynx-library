@@ -66,7 +66,7 @@ void loop()
   timer.run();
 }
 
-// Attach a ZeRGBa widget to the Virtual pin 1
+// Attach an RGB Picker widget to the Virtual pin 1
 // to control the built-in RGB led!
 PLYNX_WRITE(V0) {
   int r = param[0].asInt();
