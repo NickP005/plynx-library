@@ -88,4 +88,4 @@ The Plynx C++ Library is a fork and derivative of the [Blynk library](https://gi
 ## Links
 
 - Plynx on the App Store: https://apps.apple.com/us/app/plynx-diy-iot/id6756375448
-- Website: https://plynx.cc
+- Website: https://www.plynx.cc
