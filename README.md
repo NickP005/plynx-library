@@ -81,11 +81,13 @@ Plynx.begin(auth, ssid, pass, serverIp, 8080);
 
 Plynx speaks the classic Blynk Legacy protocol, so it also works with Blynk-legacy servers and existing sketches. You can point the same firmware at either a Plynx server or a Blynk-legacy server by changing the host in `begin()`.
 
+Plynx is an independent project, not affiliated with, sponsored by, or endorsed by Blynk Inc. The Blynk name is used only to describe protocol compatibility. "Blynk" is a trademark of Blynk Inc.
+
 ## Credits
 
 The Plynx C++ Library is a fork and derivative of the [Blynk library](https://github.com/blynkkk/blynk-library) by Volodymyr Shymanskyy, released under the MIT License. The original authorship is kept in the source files, and this library ships under the same MIT License. Thanks to the original author and contributors.
 
 ## Links
 
-- Plynx on the App Store: https://apps.apple.com/us/app/plynx-diy-iot/id6756375448
+- Plynx on the App Store: https://apps.apple.com/us/app/plynx-arduino-esp32-control/id6756375448
 - Website: https://www.plynx.cc
