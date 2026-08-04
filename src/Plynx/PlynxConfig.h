@@ -25,7 +25,7 @@
  * Professional settings
  ***************************************************/
 // Library version.
-#define PLYNX_VERSION        "1.0.2"
+#define PLYNX_VERSION        "1.0.5"
 
 #define PLYNX_NEW_LIBRARY
 

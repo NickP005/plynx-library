@@ -77,6 +77,24 @@ IPAddress serverIp(192, 168, 1, 100);
 Plynx.begin(auth, ssid, pass, serverIp, 8080);
 ```
 
+## Updates over the air
+
+Since 1.0.5 the ESP32 and ESP8266 shells carry the update handler by default:
+the board can receive a new firmware from the server and reboot into it, with
+no extra code in the sketch. It also reports how much space it has for an
+update, so the server knows in advance whether a build fits.
+
+Nothing to call — `Plynx.begin()` and `Plynx.run()` are enough. To leave the
+handler out (a board that must never update itself, or a sketch that needs the
+flash for something else) define this before the include:
+
+```cpp
+#define PLYNX_NO_OTA
+#include <PlynxSimpleEsp32.h>
+```
+
+The handler costs about 7.5 KB of flash.
+
 ## Compatibility
 
 Plynx speaks the classic Blynk Legacy protocol, so it also works with Blynk-legacy servers and existing sketches. You can point the same firmware at either a Plynx server or a Blynk-legacy server by changing the host in `begin()`.
