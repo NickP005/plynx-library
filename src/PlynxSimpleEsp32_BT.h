@@ -152,7 +152,14 @@ class PlynxTransportEsp32_BT
       switch (event)
       {
         case ESP_SPP_INIT_EVT: // Once the SPP callback has been registered, ESP_SPP_INIT_EVT is triggered
+#ifdef ESP_IDF_VERSION_MAJOR
+          // IDF v4 split the single scan-mode enum into two arguments. Same
+          // guard the core's own BluetoothSerial.cpp uses (:251 in esp32 3.3.10):
+          // without it this header does not build on any current core.
+          esp_bt_gap_set_scan_mode(ESP_BT_CONNECTABLE, ESP_BT_GENERAL_DISCOVERABLE);
+#else
           esp_bt_gap_set_scan_mode(ESP_BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE);
+#endif
           esp_spp_start_srv(ESP_SPP_SEC_NONE, ESP_SPP_ROLE_SLAVE, 0, "SPP_SERVER");
           break;
 
