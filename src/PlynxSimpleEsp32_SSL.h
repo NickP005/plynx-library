@@ -21,6 +21,11 @@ static const char PLYNX_DEFAULT_ROOT_CA[] =
 #include <PlynxApiArduino.h>
 #include <Plynx/PlynxProtocol.h>
 #include <Adapters/PlynxArduinoClient.h>
+// connectWiFi() below uses WiFi.mode()/WiFi.begin(). WiFiClientSecure.h used to
+// drag WiFi.h in on its own; on arduino-esp32 3.x it does not, and this shell
+// stopped compiling at all -- which is why Plynx.Edgent, the only example built
+// on it, could not be built either. The ESP8266 SSL shell always included it.
+#include <WiFi.h>
 #include <WiFiClientSecure.h>
 
 template <typename Client>
