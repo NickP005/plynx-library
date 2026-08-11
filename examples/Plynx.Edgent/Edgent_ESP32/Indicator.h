@@ -84,14 +84,25 @@ protected:
 
 #elif defined(BOARD_LED_PIN_R)     // Normal RGB LED (common anode or common cathode)
 
-  void initLED() {
-    ledcAttachPin(BOARD_LED_PIN_R, BOARD_LEDC_CHANNEL_1);
-    ledcAttachPin(BOARD_LED_PIN_G, BOARD_LEDC_CHANNEL_2);
-    ledcAttachPin(BOARD_LED_PIN_B, BOARD_LEDC_CHANNEL_3);
+// arduino-esp32 3.x addresses LEDC by PIN and allocates the channel itself:
+// ledcSetup() and ledcAttachPin() were removed, so this example stopped
+// compiling on every current core. Both spellings are kept, because the
+// library still supports 2.x.
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && (ESP_ARDUINO_VERSION_MAJOR >= 3)
+  #define PLYNX_LEDC_ATTACH(pin, chan)  ledcAttach(pin, BOARD_LEDC_BASE_FREQ, BOARD_LEDC_TIMER_BITS)
+  #define PLYNX_LEDC_WRITE(pin, chan, duty)  ledcWrite(pin, duty)
+#else
+  #define PLYNX_LEDC_ATTACH(pin, chan)  do { \
+      ledcSetup(chan, BOARD_LEDC_BASE_FREQ, BOARD_LEDC_TIMER_BITS); \
+      ledcAttachPin(pin, chan); \
+    } while (0)
+  #define PLYNX_LEDC_WRITE(pin, chan, duty)  ledcWrite(chan, duty)
+#endif
 
-    ledcSetup(BOARD_LEDC_CHANNEL_1, BOARD_LEDC_BASE_FREQ, BOARD_LEDC_TIMER_BITS);
-    ledcSetup(BOARD_LEDC_CHANNEL_2, BOARD_LEDC_BASE_FREQ, BOARD_LEDC_TIMER_BITS);
-    ledcSetup(BOARD_LEDC_CHANNEL_3, BOARD_LEDC_BASE_FREQ, BOARD_LEDC_TIMER_BITS);
+  void initLED() {
+    PLYNX_LEDC_ATTACH(BOARD_LED_PIN_R, BOARD_LEDC_CHANNEL_1);
+    PLYNX_LEDC_ATTACH(BOARD_LED_PIN_G, BOARD_LEDC_CHANNEL_2);
+    PLYNX_LEDC_ATTACH(BOARD_LED_PIN_B, BOARD_LEDC_CHANNEL_3);
   }
 
   void setRGB(uint32_t color) {
@@ -99,28 +110,39 @@ protected:
     uint8_t g = (color & 0x00FF00) >> 8;
     uint8_t b = (color & 0x0000FF);
     #if BOARD_LED_INVERSE
-    ledcWrite(BOARD_LEDC_CHANNEL_1, TO_PWM(255 - r));
-    ledcWrite(BOARD_LEDC_CHANNEL_2, TO_PWM(255 - g));
-    ledcWrite(BOARD_LEDC_CHANNEL_3, TO_PWM(255 - b));
+    PLYNX_LEDC_WRITE(BOARD_LED_PIN_R, BOARD_LEDC_CHANNEL_1, TO_PWM(255 - r));
+    PLYNX_LEDC_WRITE(BOARD_LED_PIN_G, BOARD_LEDC_CHANNEL_2, TO_PWM(255 - g));
+    PLYNX_LEDC_WRITE(BOARD_LED_PIN_B, BOARD_LEDC_CHANNEL_3, TO_PWM(255 - b));
     #else
-    ledcWrite(BOARD_LEDC_CHANNEL_1, TO_PWM(r));
-    ledcWrite(BOARD_LEDC_CHANNEL_2, TO_PWM(g));
-    ledcWrite(BOARD_LEDC_CHANNEL_3, TO_PWM(b));
+    PLYNX_LEDC_WRITE(BOARD_LED_PIN_R, BOARD_LEDC_CHANNEL_1, TO_PWM(r));
+    PLYNX_LEDC_WRITE(BOARD_LED_PIN_G, BOARD_LEDC_CHANNEL_2, TO_PWM(g));
+    PLYNX_LEDC_WRITE(BOARD_LED_PIN_B, BOARD_LEDC_CHANNEL_3, TO_PWM(b));
     #endif
   }
 
 #elif defined(BOARD_LED_PIN)       // Single color LED
 
+// Same story as the RGB branch above: pin-addressed LEDC on 3.x, channels on 2.x.
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && (ESP_ARDUINO_VERSION_MAJOR >= 3)
+  #define PLYNX_LEDC_ATTACH1(pin, chan)  ledcAttach(pin, BOARD_LEDC_BASE_FREQ, BOARD_LEDC_TIMER_BITS)
+  #define PLYNX_LEDC_WRITE1(pin, chan, duty)  ledcWrite(pin, duty)
+#else
+  #define PLYNX_LEDC_ATTACH1(pin, chan)  do { \
+      ledcSetup(chan, BOARD_LEDC_BASE_FREQ, BOARD_LEDC_TIMER_BITS); \
+      ledcAttachPin(pin, chan); \
+    } while (0)
+  #define PLYNX_LEDC_WRITE1(pin, chan, duty)  ledcWrite(chan, duty)
+#endif
+
   void initLED() {
-    ledcSetup(BOARD_LEDC_CHANNEL_1, BOARD_LEDC_BASE_FREQ, BOARD_LEDC_TIMER_BITS);
-    ledcAttachPin(BOARD_LED_PIN, BOARD_LEDC_CHANNEL_1);
+    PLYNX_LEDC_ATTACH1(BOARD_LED_PIN, BOARD_LEDC_CHANNEL_1);
   }
 
   void setLED(uint32_t color) {
     #if BOARD_LED_INVERSE
-    ledcWrite(BOARD_LEDC_CHANNEL_1, TO_PWM(255 - color));
+    PLYNX_LEDC_WRITE1(BOARD_LED_PIN, BOARD_LEDC_CHANNEL_1, TO_PWM(255 - color));
     #else
-    ledcWrite(BOARD_LEDC_CHANNEL_1, TO_PWM(color));
+    PLYNX_LEDC_WRITE1(BOARD_LED_PIN, BOARD_LEDC_CHANNEL_1, TO_PWM(color));
     #endif
   }
 
