@@ -18,15 +18,49 @@
 #include <Plynx/PlynxApi.h>
 #include <utility/PlynxUtility.h>
 
-#ifdef PLYNX_OTA_HAS_DEFAULT
-// Built-in OTA (Plynx/PlynxOta.h, ESP32/ESP8266 only; the ESP shells define
-// PLYNX_OTA_HAS_DEFAULT before including this header and pull the
-// implementation in at the bottom, after the global Plynx object exists).
-// Other platforms / PLYNX_NO_OTA: these hooks vanish, zero cost.
+// Built-in OTA hooks (Plynx/PlynxOta.h, ESP32/ESP8266 only; the ESP shells
+// pull the implementation in at the bottom, after the global Plynx object
+// exists). Other platforms: the call sites below vanish, zero cost.
+//
+// Read this before touching the condition. This file has an include guard, so
+// whatever is decided here is decided at the FIRST inclusion in a translation
+// unit. PLYNX_OTA_HAS_DEFAULT is defined by a HEADER, so it can be on in one
+// translation unit and off in another -- and then PlynxProtocol<Transp> gets
+// two different bodies of the same COMDAT symbol. That is an ODR violation
+// neither the compiler nor the linker reports: the linker keeps one body,
+// picked by link order, so a two-file sketch lost its OTA dispatch depending
+// on the alphabetical order of the file names. Measured, not feared.
+//
+// So the condition here uses only macros that come from the build flags and
+// are therefore identical in every translation unit, and the call sites are
+// compiled unconditionally. Whether the OTA code is really there is settled at
+// LINK time instead: without PlynxOta.h the weak no-ops below are what the
+// calls resolve to.
+#if defined(ESP32) || defined(ESP8266)
+#define PLYNX_OTA_CALLS 1
 void PlynxOtaTick();                                      // pending-confirm watchdog
 void PlynxOtaAuthOk();                                    // authenticated handshake -> confirm
 void PlynxOtaDispatch(PlynxReq& req, const PlynxParam& param); // default OTA handler (user override wins)
+
+#ifdef PLYNX_OTA_HAS_DEFAULT
+// PlynxOta.h will be compiled in this translation unit and provides the strong
+// definitions. Also a marker for PlynxOta.h itself: see the #error there.
+#define PLYNX_OTA_PROTOCOL_WIRED 1
+#else
+// No built-in OTA here (PLYNX_NO_OTA, or a shell that does not carry the
+// handler, or this translation unit simply included us first). Weak no-ops so
+// the identical call sites still link; a translation unit that does compile
+// PlynxOta.h overrides them, for the whole program.
+__attribute__((weak)) void PlynxOtaTick() {}
+__attribute__((weak)) void PlynxOtaAuthOk() {}
+__attribute__((weak)) void PlynxOtaDispatch(PlynxReq& req, const PlynxParam& param)
+{
+    // Exactly what the switch used to do without the built-in handler: hand the
+    // frame to the sketch's PLYNX_WRITE(InternalPinOTA), if it defined one.
+    PlynxWidgetWriteInternalPinOTA(req, param);
+}
 #endif
+#endif // ESP32 || ESP8266
 
 template <class Transp>
 class PlynxProtocol
@@ -58,9 +92,13 @@ public:
 
     bool isTokenInvalid() const { return state == TOKEN_INVALID; }
 
-#ifdef PLYNX_OTA_HAS_DEFAULT
-    // Read-only view of the transport for the built-in OTA (PlynxOta.h):
-    // the expected firmware download host is the configured server endpoint.
+#ifdef PLYNX_OTA_CALLS
+    // Read-only view of the transport for the built-in OTA (PlynxOta.h): the
+    // expected firmware download host is the configured server endpoint. Not
+    // under PLYNX_OTA_HAS_DEFAULT: whether this member exists must not depend
+    // on include order either -- its absence used to be the only thing that
+    // caught a misbuilt sketch, by accident, and it stopped catching it as
+    // soon as the user defined PLYNX_OTA_HOST.
     const Transp& transportConn() const { return conn; }
 #endif
 
@@ -157,7 +195,7 @@ bool PlynxProtocol<Transp>::run(bool avail)
 {
     PLYNX_RUN_YIELD();
 
-#ifdef PLYNX_OTA_HAS_DEFAULT
+#ifdef PLYNX_OTA_CALLS
     PlynxOtaTick();
 #endif
 
@@ -275,7 +313,7 @@ bool PlynxProtocol<Transp>::processInput(void)
                 PLYNX_LOG3(PLYNX_F("Ready (ping: "), lastActivityIn-lastHeartbeat, PLYNX_F("ms)."));
                 lastHeartbeat = lastActivityIn;
                 state = CONNECTED;
-#ifdef PLYNX_OTA_HAS_DEFAULT
+#ifdef PLYNX_OTA_CALLS
                 PlynxOtaAuthOk();
 #endif
 #ifdef PLYNX_DEBUG
@@ -338,7 +376,7 @@ bool PlynxProtocol<Transp>::processInput(void)
         if (state == CONNECTING) {
             PLYNX_LOG1(PLYNX_F("Ready"));
             state = CONNECTED;
-#ifdef PLYNX_OTA_HAS_DEFAULT
+#ifdef PLYNX_OTA_CALLS
             PlynxOtaAuthOk();
 #endif
 #ifdef PLYNX_DEBUG
@@ -402,9 +440,11 @@ bool PlynxProtocol<Transp>::processInput(void)
         switch (cmd32) {
         case PLYNX_INT_RTC:  PlynxWidgetWriteInternalPinRTC(req, param2);    break;
         case PLYNX_INT_UTC:  PlynxWidgetWriteInternalPinUTC(req, param2);    break;
-#ifdef PLYNX_OTA_HAS_DEFAULT
+#ifdef PLYNX_OTA_CALLS
         // Built-in OTA; a sketch-level PLYNX_WRITE(InternalPinOTA) override
-        // is detected inside the dispatch and still wins.
+        // is detected inside the dispatch and still wins. Without the built-in
+        // handler this resolves to the weak no-op at the top of this file,
+        // which forwards to that same override.
         case PLYNX_INT_OTA:  PlynxOtaDispatch(req, param2);                  break;
 #else
         case PLYNX_INT_OTA:  PlynxWidgetWriteInternalPinOTA(req, param2);    break;

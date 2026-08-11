@@ -95,6 +95,56 @@ flash for something else) define this before the include:
 
 The handler costs about 7.5 KB of flash.
 
+### A bad update undoes itself (`<PlynxSimpleEsp32.h>`)
+
+An update is not final the moment it is written. The new firmware boots **on
+probation**: it becomes permanent only once it has opened its first
+authenticated session with the server. Until then the ESP32 bootloader is
+holding the previous firmware, and it will bring it back — by itself, without
+running a line of the new image. That is what saves a board whose new firmware
+crashes before `setup()` even starts, which is exactly the case no software
+watchdog can cover.
+
+Read this part twice, because it is the part that surprises people:
+
+> **Any reset before that first authenticated session undoes the update** —
+> not only the window running out. A power cut, a watchdog, an `ESP.restart()`
+> the sketch does itself, the setup hotspot rebooting after new WiFi
+> credentials: each of them lands while the image is still on probation, and
+> the board comes back on the old firmware. The server will simply push the
+> update again.
+
+For most fleets that is exactly the wanted behaviour: a board the server
+cannot reach is a board nobody can fix remotely. For one that is offline for
+long stretches by design, or for a sketch that spends minutes in `setup()`
+before calling `Plynx.begin()`, widen the window:
+
+```cpp
+#define PLYNX_OTA_GUARD_MS 600000UL      // ten minutes instead of three
+#include <PlynxSimpleEsp32.h>
+```
+
+To leave the bootloader hook alone entirely — you keep OTA, you lose the
+automatic undo:
+
+```cpp
+#define PLYNX_NO_BOOTLOADER_ROLLBACK
+#include <PlynxSimpleEsp32.h>
+```
+
+That one is **required** next to ESP RainMaker, which defines the same core
+hook; without it the link fails with `multiple definition of
+verifyRollbackLater`.
+
+Two limits worth knowing. This lives in `<PlynxSimpleEsp32.h>` only: the SSL,
+BT and BLE shells (and `Plynx.Edgent`, which is built on the SSL one) carry
+neither the OTA handler nor this. And while the image is on probation Plynx is
+the only thing that can confirm it, so an update written by ArduinoOTA or
+`esp_https_ota` in the same sketch also waits for a Plynx session.
+
+The ESP8266 has a single application slot — the new image is copied over the
+old one at boot — so none of this applies there and no rollback is possible.
+
 ## Compatibility
 
 Plynx speaks the classic Blynk Legacy protocol, so it also works with Blynk-legacy servers and existing sketches. You can point the same firmware at either a Plynx server or a Blynk-legacy server by changing the host in `begin()`.

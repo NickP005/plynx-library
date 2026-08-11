@@ -69,10 +69,12 @@ enum PlynxProvError : uint8_t {
     PLYNX_PROV_ERR_TOKEN   = 2,   // server rejected the auth token
 };
 
-#ifdef PLYNX_OTA_HAS_DEFAULT
+#ifdef PLYNX_OTA_CALLS
 // Built-in OTA pending-confirm watchdog (see Plynx/PlynxOta.h): must also
 // tick while the token-less path waits for WiFi, or a fresh firmware that
-// cannot rejoin the network would never roll back.
+// cannot rejoin the network would never roll back. PLYNX_OTA_CALLS, not
+// PLYNX_OTA_HAS_DEFAULT: this declaration used to be the only reason a
+// misbuilt sketch still compiled, which hid the problem instead of showing it.
 void PlynxOtaTick();
 #endif
 
@@ -166,7 +168,7 @@ public:
             if (millis() - started > timeoutMs) {
                 return false;
             }
-#ifdef PLYNX_OTA_HAS_DEFAULT
+#ifdef PLYNX_OTA_CALLS
             PlynxOtaTick();
 #endif
             PlynxDelay(250);
