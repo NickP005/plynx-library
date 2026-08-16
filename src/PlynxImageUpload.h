@@ -68,8 +68,15 @@
  * @param vpin   il pin virtuale, es. 7 per V7
  * @param data   i byte dell'immagine (JPEG o PNG)
  * @param len    quanti byte
- * @return       il codice HTTP: 200 fatto · 401 token sbagliato ·
- *               413 foto troppo grande (max 1 MB) · 507 spazio esaurito ·
+ * @return       il codice HTTP:
+ *               200 fatto ·
+ *               401 token sbagliato ·
+ *               413 foto troppo grande (max 1 MB) ·
+ *               415 non è un JPEG o un PNG (o è troppo corta per esserlo) ·
+ *               429 troppo in fretta: fra due foto ci vuole almeno mezzo
+ *                   secondo — è il freno che impedisce a una scheda impazzita
+ *                   di riempire il server ·
+ *               507 spazio esaurito ·
  *               negativo se non si è nemmeno riusciti a parlare col server
  *
  * ⚠️ Il valore di ritorno **va guardato**. Una foto rifiutata per quota o per

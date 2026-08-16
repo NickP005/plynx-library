@@ -162,6 +162,17 @@ void scattaEPubblica() {
     case 413:
       Serial.println("Foto troppo grande (max 1 MB): abbassa frame_size.");
       break;
+    case 415:
+      // Capita se il sensore restituisce un buffer che non è JPEG: succede
+      // quando pixel_format non è PIXFORMAT_JPEG. Il server guarda i primi
+      // byte e rifiuta, invece di tenersi in casa roba che nessuno sa aprire.
+      Serial.println("Non è un JPEG: controlla pixel_format = PIXFORMAT_JPEG.");
+      break;
+    case 429:
+      // Non è un errore da correggere, è un freno: fra due foto ci vuole
+      // almeno mezzo secondo. Se lo vedi spesso, alza INTERVALLO_MINIMO.
+      Serial.println("Troppo in fretta: aspetta di più fra una foto e l'altra.");
+      break;
     case 507:
       Serial.println("Spazio esaurito sull'account (20 MB): le vecchie scadono da sole in 5 giorni.");
       break;
