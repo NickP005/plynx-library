@@ -6,8 +6,14 @@ Control your Arduino, ESP32 or ESP8266 from the Plynx app. Your board and your p
 
 Arduino IDE:
 
-- Download the ZIP from GitHub: [NickP005/plynx-library](https://github.com/NickP005/plynx-library), then in the IDE go to `Sketch > Include Library > Add .ZIP Library...` and select the file.
-- Or install it from the Library Manager (search for "Plynx") when it becomes available there.
+- **Library Manager**: `Tools > Manage Libraries...`, search for **Plynx**, Install. This is the short way, and it is also how you get updates.
+- Or download the ZIP from GitHub: [NickP005/plynx-library](https://github.com/NickP005/plynx-library), then `Sketch > Include Library > Add .ZIP Library...` and select the file.
+
+Same thing from `arduino-cli`:
+
+```
+arduino-cli lib install Plynx
+```
 
 ## Quick start
 
