@@ -92,7 +92,14 @@ void            PlynxFatal() PLYNX_NORETURN;
 #define PLYNX_FATAL(msg)     { PLYNX_LOG1(msg); PlynxFatal(); }
 #define PLYNX_LOG_RAM()      { PLYNX_LOG2(PLYNX_F("Free RAM: "), PlynxFreeRam()); }
 #define PLYNX_LOG_FN()       PLYNX_LOG3(PLYNX_F(__FUNCTION__), '@', __LINE__);
-#define PLYNX_LOG_TROUBLE(t) PLYNX_LOG2(PLYNX_F("Trouble detected: http://docs.plynx.cc/#troubleshooting-"), t)
+// 🪤 Questa riga puntava a https://www.plynx.cc/support/ , che il 03/09/2026
+// risponde **404**: la pagina esiste solo come lavoro non ancora pubblicato.
+// E' l'unico aiuto che una scheda in difficolta' riesce a dare alla persona
+// che la sta guardando sul monitor seriale, cioe' esattamente il momento in
+// cui un link rotto costa di piu'. Verificato: docs.plynx.cc risponde 200.
+// Chi sposta questo indirizzo lo APRE prima, e lo scrive gia' in https (un
+// 308 stampato su un seriale e' un indirizzo che qualcuno ricopia a mano).
+#define PLYNX_LOG_TROUBLE(t) PLYNX_LOG2(PLYNX_F("Trouble detected: https://docs.plynx.cc/#troubleshooting-"), t)
 
 #ifndef PLYNX_PRINT
 #undef PLYNX_DEBUG
