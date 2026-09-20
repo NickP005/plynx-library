@@ -44,6 +44,26 @@ void PlynxApi<Proto>::sendInfo()
         // update. Legacy parsers just skip unknown keys.
         PLYNX_PARAM_KV("cm"     , "1")
 #endif
+#ifdef PLYNX_OTA_TRANSPORT_PUSH
+        // "ota-ble": this board can be updated by whoever is connected to it,
+        // because the firmware carries the push receiver.
+        //
+        // 🔴 Its ABSENCE is a fact, not a doubt. Every Bluetooth board built
+        // before this key existed cannot receive an update at all: the OTA
+        // dispatch there falls on the weak no-op and nothing happens, with no
+        // error. So a client that does not see this key must not offer an
+        // update button -- it must say that the board needs one pass over USB
+        // first.
+        PLYNX_PARAM_KV("ota-ble", "1")
+        // "ota-win": the most unacknowledged firmware bytes the sender may hold.
+        //
+        // 🔴 Without this the sender has to guess, and the only number it could
+        // guess from is the ack window -- which says when WE speak, not how much
+        // we can hold. Those are different quantities and they were four times
+        // apart. Whoever reads this key must honour a value SMALLER than it
+        // expected: this is the only place a board ever states it.
+        PLYNX_PARAM_KV("ota-win", PLYNX_TOSTRING(PLYNX_OTA_PUSH_WINDOW))
+#endif
         PLYNX_PARAM_KV("build"  , __DATE__ " " __TIME__)
         "\0"
     ;

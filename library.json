@@ -1,6 +1,6 @@
 {
   "name": "Plynx",
-  "version": "1.0.5",
+  "version": "1.1.0",
   "description": "Control your Arduino, ESP32 or ESP8266 from the Plynx app. Talks to a Plynx or Blynk-legacy server (default yes.plynx.cc). Derived from the Blynk library. It supports  WiFi, BLE, Bluetooth, Ethernet, GSM, USB, Serial. Works with many boards like ESP8266, ESP32, Arduino UNO, Nano, Due, Mega, Zero, MKR100, Yun, Raspberry Pi, Particle, Energia, ARM mbed, Intel Edison/Galileo/Joule, BBC micro:bit, DFRobot, RedBearLab, Microduino, LinkIt ONE ...",
   "keywords": "sensors, control, device, smartphone, mobile, app, web, cloud, communication, protocol, iot, m2m, wifi, ble, bluetooth, ethernet, usb, serial, gsm, gprs, 3g, data, esp8266, http",
   "authors":
@@ -23,5 +23,8 @@
   },
   "frameworks": "*",
   "platforms": "*",
-  "examples": "examples/*/*/*.ino"
+  "examples": "examples/*/*/*.ino",
+  "dependencies": [
+    { "name": "NimBLE-Arduino", "platforms": "espressif32", "frameworks": "arduino" }
+  ]
 }

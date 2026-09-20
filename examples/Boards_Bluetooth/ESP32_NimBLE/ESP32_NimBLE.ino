@@ -20,6 +20,18 @@
   This example shows how to use ESP32 NimBLE
   to connect your project to Plynx.
 
+  NimBLE is the stack to prefer on ESP32. Measured on this very sketch with
+  arduino-cli 1.5.1 and core esp32:esp32 3.3.10, with nothing in the library
+  path but Plynx and NimBLE-Arduino: the same project built against the older
+  Bluedroid shell takes 1.111.735 bytes of flash (84%); against NimBLE it
+  takes 620.256 (47%), and 716.316 (54%) with the experimental over-the-air
+  update receiver compiled in. The receiver costs 94 KB and you still end up
+  30 points of flash better off.
+
+  That "nothing else in the library path" is not pedantry: an unrelated
+  Ethernet library merely SITTING in the search path pulls in 2.000 bytes
+  here, and the first three times these numbers were measured it was there.
+
   Warning: Bluetooth support is in beta!
  *************************************************************/
 

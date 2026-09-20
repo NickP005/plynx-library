@@ -25,7 +25,7 @@
  * Professional settings
  ***************************************************/
 // Library version.
-#define PLYNX_VERSION        "1.0.5"
+#define PLYNX_VERSION        "1.1.0"
 
 #define PLYNX_NEW_LIBRARY
 
@@ -52,6 +52,23 @@
 // Limit the outgoing command length.
 #ifndef PLYNX_MAX_SENDBYTES
 #define PLYNX_MAX_SENDBYTES  128
+#endif
+
+// The most unacknowledged firmware bytes a pushed OTA may have in flight, and
+// the single knob of the three: the ack window is derived from it and so is the
+// receive buffer below. Announced to whoever sends, as "ota-win". See
+// Plynx/PlynxOta.h for why the three numbers cannot be chosen separately.
+#ifndef PLYNX_OTA_PUSH_WINDOW
+#define PLYNX_OTA_PUSH_WINDOW 4096
+#endif
+
+// The room a push transport must give its receive queue: a whole window of
+// firmware, plus the framing it travels in ("ota\0d\0<offset>\0" and the
+// protocol header, about a tenth at the chunk sizes we use), plus one entire
+// frame of slack so the last chunk of a window is never the one that is cut.
+#ifndef PLYNX_OTA_RX_BUFFER
+#define PLYNX_OTA_RX_BUFFER \
+    (PLYNX_OTA_PUSH_WINDOW + PLYNX_OTA_PUSH_WINDOW / 4 + PLYNX_MAX_READBYTES)
 #endif
 
 // Uncomment to disable built-in analog and digital operations.

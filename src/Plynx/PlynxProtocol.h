@@ -41,6 +41,13 @@
 void PlynxOtaTick();                                      // pending-confirm watchdog
 void PlynxOtaAuthOk();                                    // authenticated handshake -> confirm
 void PlynxOtaDispatch(PlynxReq& req, const PlynxParam& param); // default OTA handler (user override wins)
+// 🔴 A transport calls this when its receive queue could NOT take everything
+// that arrived. Nobody downstream can notice that loss: the queue hands the
+// parser a byte stream, so a frame cut in half by a full queue reappears as a
+// plausible frame of the wrong length, and during an OTA the offset check
+// counts bytes, not frames. This is the only place in the program where the
+// loss is still a known fact, so it has to be reported from here.
+void PlynxOtaRxLost(size_t lost);
 
 #ifdef PLYNX_OTA_HAS_DEFAULT
 // PlynxOta.h will be compiled in this translation unit and provides the strong
@@ -53,6 +60,7 @@ void PlynxOtaDispatch(PlynxReq& req, const PlynxParam& param); // default OTA ha
 // PlynxOta.h overrides them, for the whole program.
 __attribute__((weak)) void PlynxOtaTick() {}
 __attribute__((weak)) void PlynxOtaAuthOk() {}
+__attribute__((weak)) void PlynxOtaRxLost(size_t lost) { (void)lost; }
 __attribute__((weak)) void PlynxOtaDispatch(PlynxReq& req, const PlynxParam& param)
 {
     // Exactly what the switch used to do without the built-in handler: hand the

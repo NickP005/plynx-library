@@ -3,10 +3,23 @@
  * @license    This project is released under the MIT License (MIT)
  * @brief      Built-in OTA handler for ESP32 / ESP8266.
  *
- * The server pushes an internal frame "ota\0<url>[\0<sha256hex>\0<size>]".
- * Legacy servers send only the url: we proceed without hash verification
- * (and log it). Download is a plain HTTP GET streamed straight into the
- * flash updater, hashing incrementally chunk by chunk.
+ * TWO TRANSPORTS, ONE SET OF RULES. Which one is compiled is decided by the
+ * shell, and only one of them is ever in a binary:
+ *
+ *   default (WiFi) -- the server pushes an internal frame
+ *      "ota\0<url>[\0<sha256hex>\0<size>]" and the board FETCHES the image
+ *      itself: a plain HTTP GET streamed straight into the flash updater,
+ *      hashing incrementally chunk by chunk. Legacy servers send only the url:
+ *      we proceed without hash verification (and log it).
+ *
+ *   PLYNX_OTA_TRANSPORT_PUSH (Bluetooth) -- the board cannot fetch anything,
+ *      so whoever is connected hands it the bytes instead, chunk by chunk with
+ *      an explicit offset. See the block above PlynxOtaPush further down. The
+ *      HTTP client, the url parser and the host pin are not compiled at all.
+ *
+ * Everything else is deliberately common: the Update wrappers, the sha256, and
+ * above all the rollback machinery. A second transport must never mean a
+ * second set of safety rules.
  *
  * ESP32:   Plynx.disconnect() first (Edgent-style), Update API, SHA256 via
  *          mbedtls. The new image boots on probation: the bootloader itself
@@ -37,6 +50,14 @@
  *   should use an authenticated link (sl>=1), define PLYNX_NO_OTA, or
  *   override PLYNX_WRITE(InternalPinOTA) with a handler that verifies a
  *   firmware signature.
+ *
+ *   On PLYNX_OTA_TRANSPORT_PUSH mitigation 2 does not exist and cannot: there
+ *   is no host to pin, because there is no download. What stands in its place
+ *   is the link itself -- the bytes can only come from whoever is already
+ *   connected and authenticated, and on Bluetooth that means someone within a
+ *   few metres who also holds the token. The sha256 still proves only that the
+ *   image arrived intact. A signature over the image is the answer for a fleet
+ *   that cares, and it is NOT implemented yet.
  *
  * Crash-loop guard: a millis-based deadline cannot see a firmware that panics
  * and reboots before it expires -- every boot would re-arm the timer. The
@@ -524,6 +545,8 @@ static char plynxOtaLower(char c)
     return (c >= 'A' && c <= 'Z') ? (char)(c + 32) : c;
 }
 
+#if !defined(PLYNX_OTA_TRANSPORT_PUSH)
+
 // "http://host[:port]/path" -> host copied out, path points into url.
 // https is NOT supported by the built-in handler (keeps the flash diet;
 // override PLYNX_WRITE(InternalPinOTA) if you need it).
@@ -628,6 +651,8 @@ static bool plynxOtaHeaderIs(const char* line, const char* name)
     return true;
 }
 
+#endif // !PLYNX_OTA_TRANSPORT_PUSH
+
 static bool plynxOtaShaMatches(const uint8_t digest[32], const char* hex)
 {
     static const char lut[] = "0123456789abcdef";
@@ -714,6 +739,8 @@ static void plynxOtaFlashAbort()
     Update.end();
 #endif
 }
+
+#if !defined(PLYNX_OTA_TRANSPORT_PUSH)
 
 /*
  * ---- the download itself ----
@@ -895,9 +922,322 @@ static void plynxOtaPerform(const char* url, const char* shaHex, uint32_t declar
     ESP.restart();
 }
 
+#else // PLYNX_OTA_TRANSPORT_PUSH
+
+/*
+ * ---- the push receiver: the other side hands us the bytes ----
+ *
+ * EXPERIMENTAL. Written for Bluetooth, where the board has no way to fetch
+ * anything: there is no WiFiClient, no route, no DNS. The phone holds the
+ * image and pushes it, so the frames run the opposite way from the WiFi
+ * handler above and nothing of that HTTP code is compiled in here.
+ *
+ * Everything else is deliberately shared with it: the same Update wrappers,
+ * the same sha256, and above all the same two rollback clocks. A second
+ * transport must not mean a second set of safety rules.
+ *
+ *   ota fw  <size> [<sha256hex>]   open a session   -> ota rdy <maxchunk>
+ *   ota d   <offset> <raw bytes>   write            -> ota ack <written>
+ *   ota fin                        close and reboot -> ota ok  <confirm_ms>
+ *   ota st                         ask where we are -> ota ack <written>
+ *   ota bye                        give up          -> ota ack 0
+ *
+ * ⚠️ CONTRACT FOR WHOEVER SENDS (read this before writing the other side).
+ * The payload of "d" is raw firmware, so it can contain 0x00 anywhere and its
+ * length cannot be recovered by looking for a terminator: it is taken as
+ * "whatever is left of the frame", from the length in the protocol header.
+ * Therefore the frame must END with the last firmware byte -- no trailing NUL
+ * after it, the way the text helpers usually append one. One extra byte per
+ * chunk builds an image that is byte-for-byte wrong and the only thing that
+ * notices is the sha256, at the very end, after the whole flash was rewritten.
+ * A chunk must also be at most the <maxchunk> announced by "rdy".
+ *
+ * 🔴 Every chunk carries the offset it believes it is writing, and the board
+ * writes it ONLY if it is exactly where it already is. This is not belt and
+ * braces: `PlynxFifo::put` is not blocking and drops silently when full, so
+ * bytes can disappear with no error anywhere. Without the offset the loss
+ * would surface only as a sha256 mismatch at the end, after the whole flash
+ * had been rewritten and the user had waited. With it, the very next chunk
+ * gets told where the board really is.
+ *
+ * ⚠️ Acks are batched (PLYNX_OTA_ACK_WINDOW) but a mismatch answers at once:
+ * success is cheap to report late, failure is not.
+ *
+ * 🔴 HOW MUCH MAY BE IN FLIGHT IS OURS TO SAY, NOT THE SENDER'S TO GUESS.
+ * Batching acks is the same thing as telling the sender "keep going without
+ * hearing from me", so the two windows below and the transport's receive
+ * buffer are one single decision taken in three places:
+ *
+ *   ack window  <=  push window  <=  what the RX buffer can hold
+ *
+ * Break the left-hand side and the transfer STALLS: the sender fills its
+ * window and waits, while we sit below the threshold that would make us
+ * speak. Break the right-hand side and the buffer overflows mid-frame -- and
+ * since the offset check counts bytes, not frames, a truncated frame is the
+ * one loss it cannot see. PLYNX_OTA_PUSH_WINDOW is the single knob: the ack
+ * window is half of it and the buffer is sized from it, so there is no way to
+ * shrink one and leave the others behind. The board states that number out
+ * loud in its own info (PLYNX_PARAM_KV("ota-win")) instead of leaving the
+ * sender to work it back out of the ack traffic.
+ */
+
+/* PLYNX_OTA_PUSH_WINDOW and PLYNX_OTA_RX_BUFFER live in PlynxConfig.h: a
+ * transport has to size its receive queue long before this file is included.
+ *
+ * The ack window is DERIVED from the push window, not chosen beside it. They
+ * were two independent literals that happened to read 4096 each, and nothing
+ * said they had to: whoever shrank one for RAM would have stalled every
+ * transfer without a single warning. Half is the useful ratio -- we speak while
+ * the sender still has room left, so the pipe never empties waiting for us. */
+#ifndef PLYNX_OTA_ACK_WINDOW
+#define PLYNX_OTA_ACK_WINDOW (PLYNX_OTA_PUSH_WINDOW / 2)
+#endif
+
+#if PLYNX_OTA_ACK_WINDOW > PLYNX_OTA_PUSH_WINDOW
+#error "PLYNX_OTA_ACK_WINDOW above PLYNX_OTA_PUSH_WINDOW stalls every transfer: \
+the sender would fill its window and wait for an ack the board never sends."
+#endif
+
+struct PlynxOtaPush {
+    bool     open;
+    bool     hasSha;
+    // The hash context is opened and closed on its own schedule: `fin` closes
+    // it to read the digest and only THEN tears the session down, so the two
+    // must not be the same flag or the context gets finished twice.
+    bool     hashOpen;
+    uint32_t expected;
+    uint32_t written;
+    uint32_t acked;
+    char     shaHex[65];
+    PlynxOtaSha256 sha;
+};
+
+static PlynxOtaPush& plynxOtaPush()
+{
+    static PlynxOtaPush p;
+    return p;
+}
+
+// The biggest payload that still fits one frame, with room for "ota\0d\0<offset>\0".
+static uint32_t plynxOtaPushMaxChunk()
+{
+    return (uint32_t)PLYNX_MAX_READBYTES - 32;
+}
+
+static void plynxOtaPushClose(bool abortFlash)
+{
+    PlynxOtaPush& p = plynxOtaPush();
+    if (p.open && abortFlash) {
+        plynxOtaFlashAbort();
+    }
+    // Close the hash too. `init()` pairs with `final()`, and here a session is
+    // abandoned every time the link drops mid-transfer: re-initialising a
+    // context that was never finished is the documented way to leak the SHA
+    // peripheral's lock.
+    if (p.hashOpen) {
+        uint8_t scarto[32];
+        p.sha.final(scarto);
+        p.hashOpen = false;
+    }
+    p.open = p.hasSha = false;
+    p.expected = p.written = p.acked = 0;
+}
+
+static void plynxOtaPushFail(const char* msg)
+{
+    PLYNX_LOG2(PLYNX_F("OTA: failed: "), msg);
+    plynxOtaPushClose(true);
+    Plynx.sendInternal("ota", "err", msg);
+}
+
+// ota fw <size> [<sha256hex>]
+static void plynxOtaPushBegin(PlynxParam::iterator it, const PlynxParam& param)
+{
+    // A session still open means the last one never finished (the link went
+    // away mid-transfer). Throw it away: Update cannot be resumed across a
+    // begin, and a stale one would refuse the new size.
+    plynxOtaPushClose(true);
+
+    if (it >= param.end() || it.isEmpty()) {
+        plynxOtaPushFail("no size");
+        return;
+    }
+    const long size = it.asLong();
+    if (size <= 0) {
+        plynxOtaPushFail("bad size");
+        return;
+    }
+
+    PlynxOtaPush& p = plynxOtaPush();
+#if defined(PLYNX_INFO_OTA_MAX)
+    // The same number the board declares as "ota-max", so the board's verdict
+    // and whoever asked can never disagree by a page.
+    if ((uint32_t)size > (uint32_t)(PLYNX_INFO_OTA_MAX)) {
+        plynxOtaPushFail("too big");
+        return;
+    }
+#endif
+
+    if (++it < param.end() && !it.isEmpty()) {
+        const char* s = it.asStr();
+        if (strlen(s) == 64) {
+            memcpy(p.shaHex, s, 65);
+            p.hasSha = true;
+        } else {
+            PLYNX_LOG1(PLYNX_F("OTA: malformed sha256, ignoring it"));
+        }
+    }
+
+    if (!plynxOtaFlashBegin((uint32_t)size)) {
+        plynxOtaPushFail("flash begin");
+        return;
+    }
+    p.sha.init();
+    p.hashOpen = true;
+    p.open     = true;
+    p.expected = (uint32_t)size;
+    p.written  = 0;
+    p.acked    = 0;
+
+    PLYNX_LOG2(PLYNX_F("OTA: push session open, bytes: "), (unsigned long)size);
+    Plynx.sendInternal("ota", "rdy", (unsigned long)plynxOtaPushMaxChunk());
+}
+
+// ota d <offset> <raw bytes>
+static void plynxOtaPushData(PlynxParam::iterator it, const PlynxParam& param)
+{
+    PlynxOtaPush& p = plynxOtaPush();
+    if (!p.open) {
+        Plynx.sendInternal("ota", "err", "no session");
+        return;
+    }
+    if (it >= param.end() || it.isEmpty()) {
+        plynxOtaPushFail("no offset");
+        return;
+    }
+    const long offset = it.asLong();
+
+    // The payload is BINARY: it can contain 0x00 anywhere, so it must never go
+    // through an iterator or a C string. Its length is what is left of the
+    // frame, which the protocol layer measured from the header.
+    if (++it >= param.end()) {
+        plynxOtaPushFail("no data");
+        return;
+    }
+    const uint8_t* base = (const uint8_t*)param.getBuffer();
+    const uint8_t* data = (const uint8_t*)it.asStr();
+    if (data < base || (size_t)(data - base) > param.getLength()) {
+        plynxOtaPushFail("bad frame");
+        return;
+    }
+    const size_t n = param.getLength() - (size_t)(data - base);
+    if (n == 0) {
+        plynxOtaPushFail("empty chunk");
+        return;
+    }
+
+    // 🔴 Not where we are: do not write, and say where we really are. The
+    // other side rewinds instead of building an image with a hole in it.
+    if ((uint32_t)offset != p.written) {
+        PLYNX_LOG4(PLYNX_F("OTA: chunk at "), (unsigned long)offset,
+                   PLYNX_F(" but we are at "), (unsigned long)p.written);
+        Plynx.sendInternal("ota", "ack", (unsigned long)p.written);
+        return;
+    }
+    if (p.written + n > p.expected) {
+        plynxOtaPushFail("overrun");
+        return;
+    }
+
+    p.sha.update(data, n);
+    if (Update.write((uint8_t*)data, n) != n) {
+        plynxOtaPushFail("flash write");
+        return;
+    }
+    p.written += (uint32_t)n;
+
+    if (p.written - p.acked >= PLYNX_OTA_ACK_WINDOW || p.written == p.expected) {
+        p.acked = p.written;
+        Plynx.sendInternal("ota", "ack", (unsigned long)p.written);
+    }
+}
+
+// ota fin
+static void plynxOtaPushFinish()
+{
+    PlynxOtaPush& p = plynxOtaPush();
+    if (!p.open) {
+        Plynx.sendInternal("ota", "err", "no session");
+        return;
+    }
+    if (p.written != p.expected) {
+        plynxOtaPushFail("truncated");
+        return;
+    }
+
+    uint8_t digest[32];
+    p.sha.final(digest);
+    p.hashOpen = false;
+    if (p.hasSha && !plynxOtaShaMatches(digest, p.shaHex)) {
+        plynxOtaPushFail("sha256 mismatch");
+        return;
+    }
+
+    if (!Update.end(false)) {
+        plynxOtaPushFail("flash end");
+        return;
+    }
+    plynxOtaPushClose(false);
+
+#if defined(ESP32)
+    plynxOtaFlagWrite(true);
+#endif
+
+    // 🔴 The last thing said before the link dies, and it has to carry the
+    // number. The board reboots now, and from that reboot it has
+    // PLYNX_OTA_CONFIRM_MS to see an authenticated session again or it rolls
+    // back to the old firmware. On this transport the only thing in the world
+    // that can produce that session is whoever just sent the bytes: it has to
+    // know it must come back, and by when.
+    PLYNX_LOG1(PLYNX_F("OTA: success, rebooting"));
+    Plynx.sendInternal("ota", "ok", (unsigned long)PLYNX_OTA_CONFIRM_MS);
+    PlynxDelay(200);
+    ESP.restart();
+}
+
+#endif // PLYNX_OTA_TRANSPORT_PUSH
+
 /*
  * Dispatch entry, wired into PlynxProtocol's PLYNX_INT_OTA case.
  */
+// A transport lost bytes on the way in (see the declaration in PlynxProtocol.h).
+//
+// 🔴 If an OTA push is open, that image is now unrecoverable and we are the
+// only one who knows. The offset check cannot save us here: it compares byte
+// counts, and the bytes that vanished took the FRAMING with them, so what the
+// parser reads next is not a chunk at the wrong offset -- it is garbage that
+// may still parse. Ending the session now costs the user one retry; saying
+// nothing costs a flash rewrite, a reboot, and a rollback they get no reason
+// for.
+//
+// 🪤 Sizing the queue for the window (PLYNX_OTA_RX_BUFFER) is what should make
+// this impossible. This exists because "should" was decided on paper: those
+// numbers have never met a real radio. If this ever fires, the buffer is the
+// thing to grow, and the serial line will say so by name.
+void PlynxOtaRxLost(size_t lost)
+{
+    if (!lost) {
+        return;
+    }
+    PLYNX_LOG2(PLYNX_F("OTA: receive queue overflowed, bytes lost: "),
+               (unsigned long)lost);
+#if defined(PLYNX_OTA_TRANSPORT_PUSH)
+    if (plynxOtaPush().open) {
+        plynxOtaPushFail("rx overflow");
+    }
+#endif
+}
+
 void PlynxOtaDispatch(PlynxReq& req, const PlynxParam& param)
 {
     // A sketch-level PLYNX_WRITE(InternalPinOTA) is a strong symbol that
@@ -919,6 +1259,35 @@ void PlynxOtaDispatch(PlynxReq& req, const PlynxParam& param)
         PLYNX_LOG1(PLYNX_F("OTA: ignored, session not authenticated"));
         return;
     }
+
+#if defined(PLYNX_OTA_TRANSPORT_PUSH)
+
+    // param layout: [0]=verb, then whatever that verb takes. The data verb
+    // carries binary after its offset, so it reads the buffer itself.
+    PlynxParam::iterator it = param.begin();
+    if (it >= param.end() || it.isEmpty()) {
+        PLYNX_LOG1(PLYNX_F("OTA: missing verb"));
+        return;
+    }
+    const char* verb = it.asStr();
+    ++it;
+
+    if (!strcmp(verb, "d")) {
+        plynxOtaPushData(it, param);
+    } else if (!strcmp(verb, "fw")) {
+        plynxOtaPushBegin(it, param);
+    } else if (!strcmp(verb, "fin")) {
+        plynxOtaPushFinish();
+    } else if (!strcmp(verb, "st")) {
+        Plynx.sendInternal("ota", "ack", (unsigned long)plynxOtaPush().written);
+    } else if (!strcmp(verb, "bye")) {
+        plynxOtaPushClose(true);
+        Plynx.sendInternal("ota", "ack", 0UL);
+    } else {
+        PLYNX_LOG2(PLYNX_F("OTA: unknown verb: "), verb);
+    }
+
+#else
 
     // param layout (NUL-separated, via iterators -- never through a single
     // C-string): [0]=url, [1]=sha256 hex (optional), [2]=size (optional).
@@ -945,6 +1314,8 @@ void PlynxOtaDispatch(PlynxReq& req, const PlynxParam& param)
         }
     }
     plynxOtaPerform(url, shaHex, size);
+
+#endif // PLYNX_OTA_TRANSPORT_PUSH
 }
 
 #endif // PlynxOta_h
