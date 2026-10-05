@@ -151,6 +151,23 @@ the only thing that can confirm it, so an update written by ArduinoOTA or
 The ESP8266 has a single application slot — the new image is copied over the
 old one at boot — so none of this applies there and no rollback is possible.
 
+## ESP32 DevKit with 30 or 38 pins
+
+The two common ESP32 DevKits carry the same chip and differ only in their
+header: one has 30 pins, the other 38, in a different order. The board cannot
+tell them apart by itself, so the sketch says it (since 1.2.0):
+
+```cpp
+#define PLYNX_BOARD_PINS 38   // the pins on your board: 30 or 38
+#include <PlynxSimpleEsp32.h>
+```
+
+The board reports it at every connect, and the Plynx app shows that pinout
+and offers only the pins your header really has, without asking you to pick
+the variant. Without the define the app asks, as before. Any value other
+than 30 or 38 stops the build with an error. The sketches the app writes for
+an ESP32 already carry this line once you have picked your variant in the app.
+
 ## Compatibility
 
 Plynx speaks the classic Blynk Legacy protocol, so it also works with Blynk-legacy servers and existing sketches. You can point the same firmware at either a Plynx server or a Blynk-legacy server by changing the host in `begin()`.
