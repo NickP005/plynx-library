@@ -56,6 +56,18 @@ public:
         return true;
     }
 
+    /**
+     * @brief Sets the token and the server, without connecting yet.
+     *
+     * @param nb        The NB object of the sketch.
+     * @param gprs      The GPRS object of the sketch.
+     * @param nbclient  The NB client object of the sketch.
+     * @param auth      The auth token of the board, from the Plynx app.
+     * @param domain    The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
+     * @param port      The port of the server.
+     *
+     * @see PlynxProtocol::run, PlynxProtocol::connected
+     */
     void config(NB&        nb,
                 GPRS&       gprs,
                 NBClient&  nbclient,
@@ -71,6 +83,25 @@ public:
         this->conn.begin(domain, port);
     }
 
+    /**
+     * @brief Connects an Arduino MKR NB 1500 to the mobile network and to the Plynx server, and waits until both are done.
+     *
+     * @param auth      The auth token of the board, from the Plynx app.
+     * @param nb        The NB object of the sketch.
+     * @param gprs      The GPRS object of the sketch.
+     * @param nbclient  The NB client object of the sketch.
+     * @param pin       The PIN of the SIM card, or an empty text.
+     * @param domain    The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
+     * @param port      The port of the server.
+     *
+     * @par Where to call
+     * In setup(), once. The whole sketch is in examples/Boards_GSM/Arduino_MKRNB.
+     *
+     * @warning It waits without a time limit. Turn on PLYNX_PRINT to read
+     * why when setup() does not end.
+     *
+     * @see PlynxProtocol::run, PlynxProtocol::connected
+     */
     void begin(const char* auth,
                NB&        nb,
                GPRS&       gprs,

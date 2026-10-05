@@ -166,6 +166,16 @@ public:
         return true;
     }
 
+    /**
+     * @brief Sets the token and the server, without connecting yet.
+     *
+     * @param esp8266   The ESP8266 object of the ESP8266_Lib library.
+     * @param auth      The auth token of the board, from the Plynx app.
+     * @param domain    The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
+     * @param port      The port of the server.
+     *
+     * @see PlynxProtocol::run, PlynxProtocol::connected
+     */
     void config(ESP8266&    esp8266,
                 const char* auth,
                 const char* domain = PLYNX_DEFAULT_DOMAIN,
@@ -177,6 +187,24 @@ public:
         this->conn.begin(domain, port);
     }
 
+    /**
+     * @brief Connects a board that uses an ESP8266 as a WiFi modem (AT firmware) to the WiFi and to the Plynx server, and waits until both are done.
+     *
+     * @param auth      The auth token of the board, from the Plynx app.
+     * @param esp8266   The ESP8266 object of the ESP8266_Lib library.
+     * @param ssid      The name of the WiFi network.
+     * @param pass      The password of the WiFi network.
+     * @param domain    The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
+     * @param port      The port of the server.
+     *
+     * @par Where to call
+     * In setup(), once. The whole sketch is in examples/Boards_WiFi/ESP8266_Shield.
+     *
+     * @warning It waits without a time limit. Turn on PLYNX_PRINT to read
+     * why when setup() does not end.
+     *
+     * @see PlynxProtocol::run, PlynxProtocol::connected
+     */
     void begin(const char* auth,
                ESP8266&    esp8266,
                const char* ssid,

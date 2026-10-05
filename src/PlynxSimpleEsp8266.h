@@ -49,6 +49,32 @@
 #include <Plynx/PlynxProvision.h>
 #endif
 
+/**
+ * @brief The Plynx object of an ESP8266 on WiFi, created by
+ * `<PlynxSimpleEsp8266.h>` as the global `Plynx`.
+ *
+ * It joins the WiFi, connects to the server and keeps the connection alive.
+ * With no token in the code, begin() opens a setup hotspot that the Plynx app
+ * uses to configure the board. It also receives updates over the air.
+ *
+ * @code
+ * #include <PlynxSimpleEsp8266.h>
+ *
+ * char auth[] = "YourAuthToken";   // from the Plynx app
+ *
+ * void setup()
+ * {
+ *   Plynx.begin(auth, "YourWiFiName", "YourWiFiPassword");
+ * }
+ *
+ * void loop()
+ * {
+ *   Plynx.run();
+ * }
+ * @endcode
+ *
+ * @see begin, PlynxProtocol::run, PlynxApi::virtualWrite
+ */
 class PlynxWifi
     : public PlynxProtocol<PlynxArduinoClient>
 {
@@ -58,6 +84,34 @@ public:
         : Base(transp)
     {}
 
+    /**
+     * @brief Joins a WiFi network and waits until the board has an address.
+     *
+     * begin() calls it for you. It waits without a time limit.
+     *
+     * @param ssid  The name of the WiFi network.
+     * @param pass  The password, or an empty text for an open network.
+     *
+     * @code
+     * #include <PlynxSimpleEsp8266.h>
+     *
+     * void setup()
+     * {
+     *   Plynx.connectWiFi("YourWiFiName", "YourWiFiPassword");
+     *   Plynx.config("YourAuthToken");
+     *   Plynx.connect();
+     * }
+     *
+     * void loop()
+     * {
+     *   Plynx.run();
+     * }
+     * @endcode
+     *
+     * @warning With a wrong name or password it never returns.
+     *
+     * @see begin, config
+     */
     void connectWiFi(const char* ssid, const char* pass)
     {
         PLYNX_LOG2(PLYNX_F("Connecting to "), ssid);
@@ -79,6 +133,40 @@ public:
         PLYNX_LOG_IP("IP: ", myip);
     }
 
+    /**
+     * @brief Sets the token and the server, without connecting yet.
+     *
+     * Use it with connect() when the sketch has to start even without a
+     * connection. The WiFi is up to the sketch.
+     *
+     * @param auth    The auth token of the board, from the Plynx app.
+     * @param domain  The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
+     * @param port    The port of the server. The default is PLYNX_DEFAULT_PORT.
+     *
+     * @par Where to call
+     * In setup(), before Plynx.connect().
+     *
+     * @code
+     * #include <PlynxSimpleEsp8266.h>
+     *
+     * void setup()
+     * {
+     *   WiFi.begin("YourWiFiName", "YourWiFiPassword");
+     *   Plynx.config("YourAuthToken");
+     *   Plynx.connect(5000);   // at most 5 seconds, then go on
+     * }
+     *
+     * void loop()
+     * {
+     *   Plynx.run();             // connects later if it could not yet
+     * }
+     * @endcode
+     *
+     * @warning Keep the token in a global variable or a literal. The library
+     * keeps a pointer to it and does not copy it.
+     *
+     * @see PlynxProtocol::connect, begin
+     */
     void config(const char* auth,
                 const char* domain = PLYNX_DEFAULT_DOMAIN,
                 uint16_t    port   = PLYNX_DEFAULT_PORT)
@@ -87,6 +175,32 @@ public:
         this->conn.begin(domain, port);
     }
 
+    /**
+     * @brief Sets the token and the server by its IP address, without
+     * connecting yet.
+     *
+     * @param auth  The auth token of the board, from the Plynx app.
+     * @param ip    The IP address of the server.
+     * @param port  The port of the server. The default is PLYNX_DEFAULT_PORT.
+     *
+     * @code
+     * #include <PlynxSimpleEsp8266.h>
+     *
+     * void setup()
+     * {
+     *   WiFi.begin("YourWiFiName", "YourWiFiPassword");
+     *   Plynx.config("YourAuthToken", IPAddress(192, 168, 1, 100), 8080);
+     *   Plynx.connect();
+     * }
+     *
+     * void loop()
+     * {
+     *   Plynx.run();
+     * }
+     * @endcode
+     *
+     * @see config, PlynxProtocol::connect
+     */
     void config(const char* auth,
                 IPAddress   ip,
                 uint16_t    port = PLYNX_DEFAULT_PORT)
@@ -95,6 +209,50 @@ public:
         this->conn.begin(ip, port);
     }
 
+    /**
+     * @brief Connects the board to the WiFi and to the Plynx server, and
+     * waits until both are done.
+     *
+     * It joins the WiFi, then logs in with the token and returns once the
+     * server has accepted it. PLYNX_CONNECTED() has already run when begin()
+     * returns.
+     *
+     * @param auth    The auth token of the board, from the Plynx app.
+     * @param ssid    The name of the WiFi network.
+     * @param pass    The password of the WiFi network.
+     * @param domain  The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
+     * @param port    The port of the server. The default is PLYNX_DEFAULT_PORT.
+     *
+     * @par Where to call
+     * In setup(), once, after Serial.begin().
+     *
+     * @code
+     * #define PLYNX_PRINT Serial
+     * #include <PlynxSimpleEsp8266.h>
+     *
+     * char auth[] = "YourAuthToken";
+     * char ssid[] = "YourWiFiName";
+     * char pass[] = "YourWiFiPassword";
+     *
+     * void setup()
+     * {
+     *   Serial.begin(115200);
+     *   Plynx.begin(auth, ssid, pass);
+     * }
+     *
+     * void loop()
+     * {
+     *   Plynx.run();
+     * }
+     * @endcode
+     *
+     * @warning It waits without a time limit. With a wrong WiFi password, a
+     * server that cannot be reached or a wrong token, setup() never ends.
+     * Turn on PLYNX_PRINT to read why. To start without a connection, use
+     * config() and connect() instead.
+     *
+     * @see config, PlynxProtocol::connect, PlynxProtocol::run, PLYNX_PRINT
+     */
     void begin(const char* auth,
                const char* ssid,
                const char* pass,
@@ -106,6 +264,36 @@ public:
         while(this->connect() != true) {}
     }
 
+    /**
+     * @brief Connects the board to the WiFi and to a Plynx server given by its
+     * IP address, and waits until both are done.
+     *
+     * @param auth  The auth token of the board, from the Plynx app.
+     * @param ssid  The name of the WiFi network.
+     * @param pass  The password of the WiFi network.
+     * @param ip    The IP address of the server, such as a Plynx server on
+     *              your network.
+     * @param port  The port of the server. The default is PLYNX_DEFAULT_PORT.
+     *
+     * @code
+     * #include <PlynxSimpleEsp8266.h>
+     *
+     * void setup()
+     * {
+     *   Plynx.begin("YourAuthToken", "YourWiFiName", "YourWiFiPassword",
+     *               IPAddress(192, 168, 1, 100), 8080);
+     * }
+     *
+     * void loop()
+     * {
+     *   Plynx.run();
+     * }
+     * @endcode
+     *
+     * @warning It waits without a time limit, like the other begin().
+     *
+     * @see begin
+     */
     void begin(const char* auth,
                const char* ssid,
                const char* pass,
@@ -118,13 +306,46 @@ public:
     }
 
 #ifndef PLYNX_NO_PROVISION
+    // Token-less begin: "one flash fits all". Classic begin(auth, ssid, pass)
+    // users pay zero bytes for this: the linker drops everything below when
+    // begin() is never called. See Plynx/PlynxProvision.h.
     /**
-     * Token-less begin: "one flash fits all".
-     *  - saved config valid -> connect as usual;
-     *  - none (or WiFi/token turn out bad) -> SoftAP "Plynx-XXXX" that the
-     *    Plynx app finds and configures. See Plynx/PlynxProvision.h.
-     * Classic begin(auth, ssid, pass) users pay zero bytes for this: the
-     * linker drops everything below when begin() is never called.
+     * @brief Connects with the WiFi and the token saved on the board, or opens
+     * a setup hotspot when there are none.
+     *
+     * The first time, the board creates a WiFi network called Plynx-XXXX. The
+     * Plynx app finds it, sends the WiFi and the token, and the board saves
+     * them and restarts. From then on begin() connects directly. When the
+     * saved WiFi does not answer within 30 seconds, or the server refuses the
+     * token, the hotspot opens again. The same sketch works on every board,
+     * with no token in the code.
+     *
+     * @par Where to call
+     * In setup(), once.
+     *
+     * @par App widget
+     * None. The Plynx app shows the board while adding a device.
+     *
+     * @code
+     * #define PLYNX_PRINT Serial
+     * #include <PlynxSimpleEsp8266.h>
+     *
+     * void setup()
+     * {
+     *   Serial.begin(115200);
+     *   Plynx.begin();
+     * }
+     *
+     * void loop()
+     * {
+     *   Plynx.run();
+     * }
+     * @endcode
+     *
+     * @note The hotspot stays open for 3 minutes (PLYNX_PROV_TIMEOUT_MS), then
+     * the board restarts and tries again.
+     *
+     * @see resetProvisioning, PLYNX_NO_PROVISION, PLYNX_PROJECT
      */
     void begin()
     {
@@ -156,7 +377,26 @@ public:
         }
     }
 
-    /// Factory reset for the auto mode (wire to a long-press button).
+    /**
+     * @brief Forgets the saved WiFi and token and restarts the board, which
+     * opens the setup hotspot again.
+     *
+     * @par Where to call
+     * When the person asks for it, for example on a long press of a button.
+     *
+     * @code
+     * #include <PlynxSimpleEsp8266.h>
+     *
+     * void checkResetButton()
+     * {
+     *   if (digitalRead(0) == LOW) {     // the BOOT button on many boards
+     *     Plynx.resetProvisioning();
+     *   }
+     * }
+     * @endcode
+     *
+     * @see begin()
+     */
     void resetProvisioning()
     {
         PlynxProvisioner::clear();
@@ -168,6 +408,26 @@ public:
 
 static WiFiClient _plynxWifiClient;
 static PlynxArduinoClient _plynxTransport(_plynxWifiClient);
+/**
+ * @brief The Plynx object of the sketch, the one every `Plynx.` call talks
+ * to.
+ *
+ * `<PlynxSimpleEsp8266.h>` creates it, so a sketch never declares it.
+ *
+ * @code
+ * #include <PlynxSimpleEsp8266.h>
+ *
+ * void setup()
+ * {
+ *   Plynx.begin("YourAuthToken", "YourWiFiName", "YourWiFiPassword");
+ * }
+ *
+ * void loop()
+ * {
+ *   Plynx.run();
+ * }
+ * @endcode
+ */
 PlynxWifi Plynx(_plynxTransport);
 
 #ifdef PLYNX_OTA_HAS_DEFAULT

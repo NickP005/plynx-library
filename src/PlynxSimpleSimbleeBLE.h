@@ -107,6 +107,16 @@ public:
         : Base(transp)
     {}
 
+    /**
+     * @brief Starts the connection of a Simblee over Bluetooth Low Energy with the token of the board.
+     *
+     * @param auth      The auth token of the board, from the Plynx app.
+     *
+     * @par Where to call
+     * In setup(), once. The whole sketch is in examples/Boards_Bluetooth/Simblee_BLE.
+     *
+     * @see PlynxProtocol::run, PlynxProtocol::connected
+     */
     void begin(const char* auth)
     {
         Base::begin(auth);

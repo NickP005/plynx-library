@@ -66,6 +66,19 @@ Each board has its own header. Include the one that matches your hardware:
 - `<PlynxSimpleEsp32.h>`
 - `<PlynxSimpleEthernet.h>`
 
+## Documentation
+
+Every function, macro, setting and widget a sketch uses is documented in the
+headers under `src/`, with a short example that compiles. To read it as a
+website, run this from the folder of the library:
+
+```
+doxygen Doxyfile
+```
+
+and open `build/doxygen-html/index.html`. [CONTRIBUTING.md](CONTRIBUTING.md)
+explains how the comments are written and how their examples are checked.
+
 ## Self-hosted / private server
 
 The default `Plynx.begin(auth, ssid, pass)` connects to `yes.plynx.cc` on port `8080`. This is the legacy hardware endpoint and traffic is unencrypted, so treat it accordingly.

@@ -26,6 +26,11 @@
  *
  */
 
+/**
+ * @file       PlynxTimer.h
+ * @brief      PlynxTimer, which runs functions later or at regular intervals.
+ */
+
 #ifndef PLYNXTIMER_H
 #define PLYNXTIMER_H
 
@@ -35,89 +40,581 @@
 #define SIMPLETIMER_H
 #define SimpleTimer PlynxTimer
 
+/** @brief A function with no parameters that a PlynxTimer calls. */
 typedef void (*timer_callback)(void);
+/** @brief A function that a PlynxTimer calls with the pointer given to it. */
 typedef void (*timer_callback_p)(void *);
 
+/**
+ * @brief Runs functions later or at regular intervals, without stopping the
+ * board.
+ *
+ * It is the way to wait in a Plynx sketch. delay() stops everything,
+ * Plynx.run() included, while a PlynxTimer only notes when each function is
+ * due and calls it from timer.run() in loop(). One PlynxTimer holds up to 16
+ * timers. In the code the class is written SimpleTimer, and PlynxTimer is the
+ * name to use.
+ *
+ * @par Where to call
+ * Create it at the top level of the sketch, set the timers in setup(), and
+ * call timer.run() in loop() next to Plynx.run().
+ *
+ * @code
+ * PlynxTimer timer;
+ *
+ * void sendUptime()
+ * {
+ *   Plynx.virtualWrite(V5, millis() / 1000);
+ * }
+ *
+ * void setup()
+ * {
+ *   // Plynx.begin(...) as in the example for your board
+ *   timer.setInterval(1000L, sendUptime);   // every second
+ * }
+ *
+ * void loop()
+ * {
+ *   Plynx.run();
+ *   timer.run();
+ * }
+ * @endcode
+ *
+ * @warning Without timer.run() in loop() no timer ever fires.
+ *
+ * @warning A function called by the timer runs inside timer.run(). If it
+ * takes long, or calls delay(), it stops Plynx.run() the same way.
+ *
+ * @see setInterval, setTimeout, PlynxProtocol::run
+ */
 class SimpleTimer {
 
 public:
-    // maximum number of timers
+    /** @brief How many timers one PlynxTimer holds, 16. */
     const static int MAX_TIMERS = 16;
 
-    // setTimer() constants
+    /** @brief For setTimer(), a timer that repeats forever. */
     const static int RUN_FOREVER = 0;
+    /** @brief For setTimer(), a timer that runs once. */
     const static int RUN_ONCE = 1;
 
-    // constructor
+    /**
+     * @brief Creates an empty timer object.
+     *
+     * @code
+     * PlynxTimer timer;   // at the top level of the sketch
+     * @endcode
+     */
     SimpleTimer();
 
+    /**
+     * @brief Clears all the timers. The first setInterval(), setTimeout() or
+     * setTimer() calls it by itself.
+     *
+     * @code
+     * PlynxTimer timer;
+     *
+     * void forgetEverything()
+     * {
+     *   timer.init();
+     * }
+     * @endcode
+     *
+     * @see deleteTimer
+     */
     void init();
 
-    // this function must be called inside loop()
+    /**
+     * @brief Calls the functions whose time has come.
+     *
+     * A timer that is late by several intervals runs once, and the missed
+     * runs are skipped.
+     *
+     * @par Where to call
+     * In loop(), at every turn, next to Plynx.run().
+     *
+     * @code
+     * PlynxTimer timer;
+     *
+     * void loop()
+     * {
+     *   Plynx.run();
+     *   timer.run();
+     * }
+     * @endcode
+     *
+     * @see setInterval
+     */
     void run();
 
-    // Timer will call function 'f' every 'd' milliseconds forever
-    // returns the timer number (numTimer) on success or
-    // -1 on failure (f == NULL) or no free timers
+    /**
+     * @brief Calls a function every `d` milliseconds, forever.
+     *
+     * @param d  The interval in milliseconds. On AVR boards write a product
+     *           as 60 * 1000L, because 60 * 1000 overflows an `int` there.
+     * @param f  The function to call. It takes no parameters and returns
+     *           nothing. Write its name without parentheses.
+     * @return The number of the timer, from 0 to 15, to use with
+     *         deleteTimer() and the others. -1 when all 16 are taken.
+     *
+     * @par Where to call
+     * In setup(), once for each repeating job.
+     *
+     * @par App widget
+     * Any widget that shows what the function sends with
+     * Plynx.virtualWrite().
+     *
+     * @code
+     * PlynxTimer timer;
+     *
+     * void sendLight()
+     * {
+     *   Plynx.virtualWrite(V2, analogRead(A0));
+     * }
+     *
+     * void setup()
+     * {
+     *   // Plynx.begin(...) as in the example for your board
+     *   timer.setInterval(2000L, sendLight);
+     * }
+     *
+     * void loop()
+     * {
+     *   Plynx.run();
+     *   timer.run();
+     * }
+     * @endcode
+     *
+     * @warning An interval of a few milliseconds with a virtualWrite() inside
+     * floods the connection. Between 1 and 10 sends per second is plenty for
+     * the app.
+     *
+     * @warning Calling setInterval() inside loop() adds a new timer at every
+     * turn, and after 16 turns there is no room left.
+     *
+     * @see setTimeout, setTimer, deleteTimer, changeInterval
+     */
     int setInterval(unsigned long d, timer_callback f);
 
-    // Timer will call function 'f' with parameter 'p' every 'd' milliseconds forever
-    // returns the timer number (numTimer) on success or
-    // -1 on failure (f == NULL) or no free timers
+    /**
+     * @brief Calls a function every `d` milliseconds, forever, passing it a
+     * pointer.
+     *
+     * The same as the other setInterval(), for one function that serves
+     * several things, each with its own data.
+     *
+     * @param d  The interval in milliseconds.
+     * @param f  The function to call, as `void name(void* p)`.
+     * @param p  The pointer the function receives.
+     * @return The number of the timer, or -1 when all 16 are taken.
+     *
+     * @code
+     * PlynxTimer timer;
+     * int ledA = 2;
+     * int ledB = 4;
+     *
+     * void blink(void* p)
+     * {
+     *   int pin = *(int*)p;
+     *   digitalWrite(pin, !digitalRead(pin));
+     * }
+     *
+     * void setup()
+     * {
+     *   timer.setInterval(500L, blink, &ledA);
+     *   timer.setInterval(800L, blink, &ledB);
+     * }
+     * @endcode
+     *
+     * @see setInterval
+     */
     int setInterval(unsigned long d, timer_callback_p f, void* p);
 
-    // Timer will call function 'f' after 'd' milliseconds one time
-    // returns the timer number (numTimer) on success or
-    // -1 on failure (f == NULL) or no free timers
+    /**
+     * @brief Calls a function once, `d` milliseconds from now.
+     *
+     * The timer frees its place after the call.
+     *
+     * @param d  The wait in milliseconds.
+     * @param f  The function to call, with no parameters.
+     * @return The number of the timer, or -1 when all 16 are taken.
+     *
+     * @par Where to call
+     * Wherever something has to happen later, for example inside
+     * PLYNX_WRITE() to turn a relay off after a few seconds.
+     *
+     * @code
+     * PlynxTimer timer;
+     *
+     * void relayOff()
+     * {
+     *   digitalWrite(4, LOW);
+     * }
+     *
+     * PLYNX_WRITE(V1)
+     * {
+     *   digitalWrite(4, HIGH);
+     *   timer.setTimeout(3000L, relayOff);   // off again in 3 seconds
+     * }
+     * @endcode
+     *
+     * @see setInterval, setTimer
+     */
     int setTimeout(unsigned long d, timer_callback f);
 
-    // Timer will call function 'f' with parameter 'p' after 'd' milliseconds one time
-    // returns the timer number (numTimer) on success or
-    // -1 on failure (f == NULL) or no free timers
+    /**
+     * @brief Calls a function once, `d` milliseconds from now, passing it a
+     * pointer.
+     *
+     * @param d  The wait in milliseconds.
+     * @param f  The function to call, as `void name(void* p)`.
+     * @param p  The pointer the function receives.
+     * @return The number of the timer, or -1 when all 16 are taken.
+     *
+     * @code
+     * PlynxTimer timer;
+     * int valve = 5;
+     *
+     * void closeValve(void* p)
+     * {
+     *   digitalWrite(*(int*)p, LOW);
+     * }
+     *
+     * void water()
+     * {
+     *   digitalWrite(valve, HIGH);
+     *   timer.setTimeout(10000L, closeValve, &valve);
+     * }
+     * @endcode
+     *
+     * @see setTimeout
+     */
     int setTimeout(unsigned long d, timer_callback_p f, void* p);
 
-    // Timer will call function 'f' every 'd' milliseconds 'n' times
-    // returns the timer number (numTimer) on success or
-    // -1 on failure (f == NULL) or no free timers
+    /**
+     * @brief Calls a function every `d` milliseconds, `n` times, then stops.
+     *
+     * @param d  The interval in milliseconds.
+     * @param f  The function to call, with no parameters.
+     * @param n  How many times. RUN_FOREVER (0) repeats without end.
+     * @return The number of the timer, or -1 when all 16 are taken.
+     *
+     * @code
+     * PlynxTimer timer;
+     *
+     * void beep()
+     * {
+     *   tone(8, 1000, 100);
+     * }
+     *
+     * void alarm()
+     * {
+     *   timer.setTimer(300L, beep, 5);   // five beeps
+     * }
+     * @endcode
+     *
+     * @see setInterval, setTimeout
+     */
     int setTimer(unsigned long d, timer_callback f, unsigned n);
 
-    // Timer will call function 'f' with parameter 'p' every 'd' milliseconds 'n' times
-    // returns the timer number (numTimer) on success or
-    // -1 on failure (f == NULL) or no free timers
+    /**
+     * @brief Calls a function every `d` milliseconds, `n` times, passing it a
+     * pointer.
+     *
+     * @param d  The interval in milliseconds.
+     * @param f  The function to call, as `void name(void* p)`.
+     * @param p  The pointer the function receives.
+     * @param n  How many times.
+     * @return The number of the timer, or -1 when all 16 are taken.
+     *
+     * @code
+     * PlynxTimer timer;
+     * int led = 2;
+     *
+     * void flip(void* p)
+     * {
+     *   int pin = *(int*)p;
+     *   digitalWrite(pin, !digitalRead(pin));
+     * }
+     *
+     * void signal()
+     * {
+     *   timer.setTimer(200L, flip, &led, 6);   // three blinks
+     * }
+     * @endcode
+     *
+     * @see setTimer
+     */
     int setTimer(unsigned long d, timer_callback_p f, void* p, unsigned n);
 
-    // updates interval of the specified timer
+    /**
+     * @brief Gives a running timer a new interval, counted from now.
+     *
+     * @param numTimer  The number returned by setInterval() or the others.
+     * @param d         The new interval in milliseconds.
+     * @return true when the timer exists, false for a free place.
+     *
+     * @par App widget
+     * Often called from PLYNX_WRITE() of a Slider that sets the speed.
+     *
+     * @code
+     * PlynxTimer timer;
+     * int sendTimer;
+     *
+     * void sendReading()
+     * {
+     *   Plynx.virtualWrite(V5, analogRead(A0));
+     * }
+     *
+     * void setup()
+     * {
+     *   sendTimer = timer.setInterval(1000L, sendReading);
+     * }
+     *
+     * PLYNX_WRITE(V6)
+     * {
+     *   timer.changeInterval(sendTimer, param.asInt() * 1000L);   // seconds
+     * }
+     * @endcode
+     *
+     * @see setInterval, restartTimer
+     */
     bool changeInterval(unsigned numTimer, unsigned long d);
 
-    // destroy the specified timer
+    /**
+     * @brief Removes a timer and frees its place.
+     *
+     * @param numTimer  The number returned by setInterval() or the others.
+     *
+     * @code
+     * PlynxTimer timer;
+     * int blinkTimer = -1;
+     *
+     * void blink()
+     * {
+     *   digitalWrite(2, !digitalRead(2));
+     * }
+     *
+     * PLYNX_WRITE(V1)
+     * {
+     *   if (param.asInt() && blinkTimer < 0) {
+     *     blinkTimer = timer.setInterval(500L, blink);
+     *   } else if (!param.asInt() && blinkTimer >= 0) {
+     *     timer.deleteTimer(blinkTimer);
+     *     blinkTimer = -1;               // the number may go to a new timer
+     *   }
+     * }
+     * @endcode
+     *
+     * @warning The next setInterval() can reuse the same number. Keep -1 in
+     * your variable after deleting, or a second deleteTimer() removes another
+     * timer.
+     *
+     * @see setInterval, disable
+     */
     void deleteTimer(unsigned numTimer);
 
-    // restart the specified timer
+    /**
+     * @brief Starts counting the interval of a timer again from now.
+     *
+     * @param numTimer  The number returned by setInterval() or the others.
+     *
+     * @code
+     * PlynxTimer timer;
+     * int idleTimer;
+     *
+     * void sleepScreen()
+     * {
+     *   digitalWrite(2, LOW);
+     * }
+     *
+     * void setup()
+     * {
+     *   idleTimer = timer.setInterval(30000L, sleepScreen);
+     * }
+     *
+     * PLYNX_WRITE(V1)
+     * {
+     *   timer.restartTimer(idleTimer);   // any touch keeps the screen on
+     * }
+     * @endcode
+     *
+     * @see changeInterval
+     */
     void restartTimer(unsigned numTimer);
 
-    // returns true if the specified timer is enabled
+    /**
+     * @brief Tells whether a timer is running or paused.
+     *
+     * @param numTimer  The number returned by setInterval() or the others.
+     * @return true when the timer is running, false when it is paused or the
+     *         place is free.
+     *
+     * @code
+     * PlynxTimer timer;
+     * int pumpTimer;
+     *
+     * void showPump()
+     * {
+     *   Plynx.virtualWrite(V7, timer.isEnabled(pumpTimer) ? 1 : 0);
+     * }
+     * @endcode
+     *
+     * @see enable, disable
+     */
     bool isEnabled(unsigned numTimer);
 
-    // enables the specified timer
+    /**
+     * @brief Resumes a paused timer.
+     *
+     * @param numTimer  The number returned by setInterval() or the others.
+     *
+     * @code
+     * PlynxTimer timer;
+     * int pumpTimer;
+     *
+     * PLYNX_WRITE(V7)
+     * {
+     *   if (param.asInt()) {
+     *     timer.enable(pumpTimer);
+     *   } else {
+     *     timer.disable(pumpTimer);
+     *   }
+     * }
+     * @endcode
+     *
+     * @see disable, toggle
+     */
     void enable(unsigned numTimer);
 
-    // disables the specified timer
+    /**
+     * @brief Pauses a timer without removing it.
+     *
+     * While paused the timer keeps counting and skips its calls, so after
+     * enable() it fires on its usual schedule.
+     *
+     * @param numTimer  The number returned by setInterval() or the others.
+     *
+     * @code
+     * PlynxTimer timer;
+     * int reportTimer;
+     *
+     * PLYNX_DISCONNECTED()
+     * {
+     *   timer.disable(reportTimer);   // nothing to report while offline
+     * }
+     *
+     * PLYNX_CONNECTED()
+     * {
+     *   timer.enable(reportTimer);
+     * }
+     * @endcode
+     *
+     * @see enable, deleteTimer
+     */
     void disable(unsigned numTimer);
 
-    // enables all timers
+    /**
+     * @brief Resumes the paused timers.
+     *
+     * It acts on the timers made with setInterval(), and on the ones made with
+     * setTimeout() or setTimer() that have not fired yet.
+     *
+     * @code
+     * PlynxTimer timer;
+     *
+     * PLYNX_CONNECTED()
+     * {
+     *   timer.enableAll();
+     * }
+     * @endcode
+     *
+     * @see disableAll
+     */
     void enableAll();
 
-    // disables all timers
+    /**
+     * @brief Pauses all the timers.
+     *
+     * It acts on the timers made with setInterval(), and on the ones made with
+     * setTimeout() or setTimer() that have not fired yet.
+     *
+     * @code
+     * PlynxTimer timer;
+     *
+     * PLYNX_DISCONNECTED()
+     * {
+     *   timer.disableAll();
+     * }
+     * @endcode
+     *
+     * @see enableAll
+     */
     void disableAll();
 
-    // enables the specified timer if it's currently disabled,
-    // and vice-versa
+    /**
+     * @brief Pauses a running timer, or resumes a paused one.
+     *
+     * @param numTimer  The number returned by setInterval() or the others.
+     *
+     * @code
+     * PlynxTimer timer;
+     * int blinkTimer;
+     *
+     * PLYNX_WRITE(V1)
+     * {
+     *   if (param.asInt()) {          // on press, not on release
+     *     timer.toggle(blinkTimer);
+     *   }
+     * }
+     * @endcode
+     *
+     * @see enable, disable
+     */
     void toggle(unsigned numTimer);
 
-    // returns the number of used timers
+    /**
+     * @brief Counts the timers in use.
+     *
+     * @return How many of the 16 places hold a timer.
+     *
+     * @code
+     * PlynxTimer timer;
+     *
+     * void report()
+     * {
+     *   Serial.println(timer.getNumTimers());
+     * }
+     * @endcode
+     *
+     * @warning Before the first setInterval(), setTimeout() or setTimer() the
+     * timer is not set up yet and the number is meaningless.
+     *
+     * @see getNumAvailableTimers
+     */
     unsigned getNumTimers();
 
-    // returns the number of available timers
+    /**
+     * @brief Counts the free places for new timers.
+     *
+     * @return How many timers can still be added, out of 16.
+     *
+     * @code
+     * PlynxTimer timer;
+     *
+     * void addIfRoom()
+     * {
+     *   if (timer.getNumAvailableTimers() > 0) {
+     *     timer.setTimeout(1000L, addIfRoom);
+     *   }
+     * }
+     * @endcode
+     *
+     * @warning Before the first setInterval(), setTimeout() or setTimer() it
+     * says 17.
+     *
+     * @see getNumTimers
+     */
     unsigned getNumAvailableTimers() { return MAX_TIMERS - numTimers; };
 
 private:

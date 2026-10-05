@@ -1,5 +1,5 @@
 /**
- * @file       PlynxSerialBLE.h
+ * @file       PlynxSimpleSerialBLE.h
  * @author     Volodymyr Shymanskyy
  * @license    This project is released under the MIT License (MIT)
  * @copyright  Copyright (c) 2016 Volodymyr Shymanskyy

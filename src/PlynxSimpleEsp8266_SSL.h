@@ -132,6 +132,19 @@ public:
         PLYNX_LOG_IP("IP: ", myip);
     }
 
+    /**
+     * @brief Sets the token and the server for an encrypted connection,
+     * without connecting yet.
+     *
+     * @param auth    The auth token of the board, from the Plynx app.
+     * @param domain  The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
+     * @param port    The port of the server. The default is PLYNX_DEFAULT_PORT_SSL.
+     * @param fingerprint  The SHA-1 fingerprint of the server certificate. Without it the
+     *                     board checks the certificate against the root the library
+     *                     carries.
+     *
+     * @see begin, PlynxProtocol::connect
+     */
     void config(const char* auth,
                 const char* domain = PLYNX_DEFAULT_DOMAIN,
                 uint16_t    port   = PLYNX_DEFAULT_PORT_SSL,
@@ -147,6 +160,19 @@ public:
         }
     }
 
+    /**
+     * @brief Sets the token and the server by its IP address for an encrypted
+     * connection, without connecting yet.
+     *
+     * @param auth  The auth token of the board, from the Plynx app.
+     * @param ip    The IP address of the server.
+     * @param port  The port of the server. The default is PLYNX_DEFAULT_PORT_SSL.
+     * @param fingerprint  The SHA-1 fingerprint of the server certificate. Without it the
+     *                     board checks the certificate against the root the library
+     *                     carries.
+     *
+     * @see config
+     */
     void config(const char* auth,
                 IPAddress   ip,
                 uint16_t    port = PLYNX_DEFAULT_PORT_SSL,
@@ -162,6 +188,47 @@ public:
         }
     }
 
+    /**
+     * @brief Connects the ESP8266 to the WiFi and to the Plynx server over an
+     * encrypted connection, and waits until both are done.
+     *
+     * The token and the values travel encrypted. The board checks the
+     * certificate of the server before sending the token.
+     *
+     * @param auth    The auth token of the board, from the Plynx app.
+     * @param ssid    The name of the WiFi network.
+     * @param pass    The password of the WiFi network.
+     * @param domain  The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
+     * @param port    The port of the server. The default is PLYNX_DEFAULT_PORT_SSL.
+     * @param fingerprint  The SHA-1 fingerprint of the server certificate. Without it the
+     *                     board checks the certificate against the root the library
+     *                     carries.
+     *
+     * @par Where to call
+     * In setup(), once.
+     *
+     * @code
+     * #define PLYNX_PRINT Serial
+     * #include <PlynxSimpleEsp8266_SSL.h>
+     *
+     * void setup()
+     * {
+     *   Serial.begin(115200);
+     *   Plynx.begin("YourAuthToken", "YourWiFiName", "YourWiFiPassword");
+     * }
+     *
+     * void loop()
+     * {
+     *   Plynx.run();
+     * }
+     * @endcode
+     *
+     * @warning It waits without a time limit. When the certificate does not
+     * match, the serial monitor shows "Secure connection failed" and the
+     * board keeps trying.
+     *
+     * @see config, PlynxProtocol::run
+     */
     void begin(const char* auth,
                const char* ssid,
                const char* pass,
@@ -174,6 +241,21 @@ public:
         while(this->connect() != true) {}
     }
 
+    /**
+     * @brief Connects the ESP8266 to the WiFi and to a Plynx server given by its IP
+     * address, over an encrypted connection.
+     *
+     * @param auth  The auth token of the board, from the Plynx app.
+     * @param ssid  The name of the WiFi network.
+     * @param pass  The password of the WiFi network.
+     * @param ip    The IP address of the server.
+     * @param port  The port of the server. The default is PLYNX_DEFAULT_PORT_SSL.
+     * @param fingerprint  The SHA-1 fingerprint of the server certificate. Without it the
+     *                     board checks the certificate against the root the library
+     *                     carries.
+     *
+     * @see begin
+     */
     void begin(const char* auth,
                const char* ssid,
                const char* pass,

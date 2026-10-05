@@ -25,6 +25,34 @@
 #include <Plynx/PlynxProtocol.h>
 #include <Adapters/PlynxArduinoClient.h>
 
+/**
+ * @brief The Plynx object of a board on wired Ethernet, such as an Arduino
+ * with the Ethernet Shield.
+ *
+ * The board header, such as `<PlynxSimpleEthernet.h>`, creates it as the
+ * global `Plynx`. begin() gets an address from the router (DHCP) or uses the
+ * one given, then connects to the server.
+ *
+ * @code
+ * #include <SPI.h>
+ * #include <Ethernet.h>
+ * #include <PlynxSimpleEthernet.h>
+ *
+ * char auth[] = "YourAuthToken";
+ *
+ * void setup()
+ * {
+ *   Plynx.begin(auth);
+ * }
+ *
+ * void loop()
+ * {
+ *   Plynx.run();
+ * }
+ * @endcode
+ *
+ * @see begin, PlynxProtocol::run
+ */
 class PlynxEthernet
     : public PlynxProtocol<PlynxArduinoClient>
 {
@@ -34,6 +62,40 @@ public:
         : Base(transp)
     {}
 
+    /**
+     * @brief Sets the token and the server, without starting the Ethernet or
+     * connecting.
+     *
+     * @param auth    The auth token of the board, from the Plynx app.
+     * @param domain  The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
+     * @param port    The port of the server, PLYNX_DEFAULT_PORT by default.
+     *
+     * @par Where to call
+     * In setup(), after Ethernet.begin() written by the sketch, and before
+     * Plynx.connect().
+     *
+     * @code
+     * #include <SPI.h>
+     * #include <Ethernet.h>
+     * #include <PlynxSimpleEthernet.h>
+     *
+     * byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+     *
+     * void setup()
+     * {
+     *   Ethernet.begin(mac);
+     *   Plynx.config("YourAuthToken");
+     *   Plynx.connect();
+     * }
+     *
+     * void loop()
+     * {
+     *   Plynx.run();
+     * }
+     * @endcode
+     *
+     * @see PlynxProtocol::connect, begin
+     */
     void config(const char* auth,
                 const char* domain = PLYNX_DEFAULT_DOMAIN,
                 uint16_t    port   = PLYNX_SERVER_PORT)
@@ -42,6 +104,31 @@ public:
         this->conn.begin(domain, port);
     }
 
+    /**
+     * @brief Sets the token and the server by its IP address, without
+     * connecting.
+     *
+     * @param auth  The auth token of the board, from the Plynx app.
+     * @param ip    The IP address of the server.
+     * @param port  The port of the server, PLYNX_DEFAULT_PORT by default.
+     *
+     * @code
+     * #include <SPI.h>
+     * #include <Ethernet.h>
+     * #include <PlynxSimpleEthernet.h>
+     *
+     * byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+     *
+     * void setup()
+     * {
+     *   Ethernet.begin(mac);
+     *   Plynx.config("YourAuthToken", IPAddress(192, 168, 1, 100), 8080);
+     *   Plynx.connect();
+     * }
+     * @endcode
+     *
+     * @see config
+     */
     void config(const char* auth,
                 IPAddress   ip,
                 uint16_t    port = PLYNX_SERVER_PORT)
@@ -51,6 +138,43 @@ public:
     }
 
     // DHCP with domain
+    /**
+     * @brief Starts the Ethernet with an address from the router, connects to
+     * the server, and waits until it is done.
+     *
+     * @param auth    The auth token of the board, from the Plynx app.
+     * @param domain  The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
+     * @param port    The port of the server, PLYNX_DEFAULT_PORT by default.
+     * @param mac     The MAC address of the shield. Without it the library
+     *                makes one from the token.
+     *
+     * @par Where to call
+     * In setup(), once.
+     *
+     * @code
+     * #include <SPI.h>
+     * #include <Ethernet.h>
+     * #include <PlynxSimpleEthernet.h>
+     *
+     * char auth[] = "YourAuthToken";
+     *
+     * void setup()
+     * {
+     *   Plynx.begin(auth);
+     * }
+     *
+     * void loop()
+     * {
+     *   Plynx.run();
+     * }
+     * @endcode
+     *
+     * @warning When the router gives no address, the board stops with "DHCP
+     * Failed!" on the PLYNX_PRINT port. It waits without a time limit for
+     * the server.
+     *
+     * @see config, PlynxProtocol::run
+     */
     void begin( const char* auth,
                 const char* domain = PLYNX_DEFAULT_DOMAIN,
                 uint16_t port      = PLYNX_SERVER_PORT,
@@ -70,6 +194,31 @@ public:
     }
 
     // Static IP with domain
+    /**
+     * @brief Starts the Ethernet with a fixed address, connects to the server
+     * by name, and waits until it is done.
+     *
+     * @param auth    The auth token of the board, from the Plynx app.
+     * @param domain  The address of the server.
+     * @param port    The port of the server.
+     * @param local   The fixed IP address of the board.
+     * @param dns     The DNS server that turns the name into an address.
+     * @param mac     The MAC address of the shield, or NULL.
+     *
+     * @code
+     * #include <SPI.h>
+     * #include <Ethernet.h>
+     * #include <PlynxSimpleEthernet.h>
+     *
+     * void setup()
+     * {
+     *   Plynx.begin("YourAuthToken", "yes.plynx.cc", 8080,
+     *               IPAddress(192, 168, 1, 50), IPAddress(192, 168, 1, 1));
+     * }
+     * @endcode
+     *
+     * @see begin
+     */
     void begin( const char* auth,
                 const char* domain,
                 uint16_t port,
@@ -89,6 +238,21 @@ public:
     }
 
     // Static IP with domain, gateway, etc
+    /**
+     * @brief Starts the Ethernet with a fixed address, gateway and subnet,
+     * connects to the server by name, and waits until it is done.
+     *
+     * @param auth     The auth token of the board, from the Plynx app.
+     * @param domain   The address of the server.
+     * @param port     The port of the server.
+     * @param local    The fixed IP address of the board.
+     * @param dns      The DNS server.
+     * @param gateway  The router.
+     * @param subnet   The subnet mask, usually 255.255.255.0.
+     * @param mac      The MAC address of the shield, or NULL.
+     *
+     * @see begin
+     */
     void begin( const char* auth,
                 const char* domain,
                 uint16_t port,
@@ -110,6 +274,28 @@ public:
     }
 
     // DHCP with server IP
+    /**
+     * @brief Starts the Ethernet with an address from the router, connects to
+     * a server given by its IP address, and waits until it is done.
+     *
+     * @param auth  The auth token of the board, from the Plynx app.
+     * @param addr  The IP address of the server.
+     * @param port  The port of the server, PLYNX_DEFAULT_PORT by default.
+     * @param mac   The MAC address of the shield, or NULL.
+     *
+     * @code
+     * #include <SPI.h>
+     * #include <Ethernet.h>
+     * #include <PlynxSimpleEthernet.h>
+     *
+     * void setup()
+     * {
+     *   Plynx.begin("YourAuthToken", IPAddress(192, 168, 1, 100), 8080);
+     * }
+     * @endcode
+     *
+     * @see begin
+     */
     void begin( const char* auth,
                 IPAddress addr,
                 uint16_t port    = PLYNX_SERVER_PORT,
@@ -129,6 +315,18 @@ public:
     }
 
     // Static IP with server IP
+    /**
+     * @brief Starts the Ethernet with a fixed address, connects to a server
+     * given by its IP address, and waits until it is done.
+     *
+     * @param auth   The auth token of the board, from the Plynx app.
+     * @param addr   The IP address of the server.
+     * @param port   The port of the server.
+     * @param local  The fixed IP address of the board.
+     * @param mac    The MAC address of the shield, or NULL.
+     *
+     * @see begin
+     */
     void begin( const char* auth,
                 IPAddress addr,
                 uint16_t port,
@@ -147,6 +345,22 @@ public:
     }
 
     // Static IP with server IP, DNS, gateway, etc
+    /**
+     * @brief Starts the Ethernet with a fixed address, gateway and subnet,
+     * connects to a server given by its IP address, and waits until it is
+     * done.
+     *
+     * @param auth     The auth token of the board, from the Plynx app.
+     * @param addr     The IP address of the server.
+     * @param port     The port of the server.
+     * @param local    The fixed IP address of the board.
+     * @param dns      The DNS server.
+     * @param gateway  The router.
+     * @param subnet   The subnet mask, usually 255.255.255.0.
+     * @param mac      The MAC address of the shield, or NULL.
+     *
+     * @see begin
+     */
     void begin( const char* auth,
                 IPAddress addr,
                 uint16_t port,

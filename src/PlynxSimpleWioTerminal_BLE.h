@@ -162,6 +162,16 @@ public:
 
     {}
 
+    /**
+     * @brief Starts the connection of a Wio Terminal over Bluetooth Low Energy with the token of the board.
+     *
+     * @param auth      The auth token of the board, from the Plynx app.
+     *
+     * @par Where to call
+     * In setup(), once. The whole sketch is in examples/Boards_Bluetooth/WioTerminal_BLE.
+     *
+     * @see PlynxProtocol::run, PlynxProtocol::connected
+     */
     void begin(const char* auth)
     {
         Base::begin(auth);
@@ -169,6 +179,16 @@ public:
         conn.begin();
     }
 
+    /**
+     * @brief Sets the name the phone shows when it looks for the board.
+     *
+     * @param name      The name the phone shows, such as "Greenhouse".
+     *
+     * @par Where to call
+     * In setup(), once, before begin(). The whole sketch is in examples/Boards_Bluetooth/WioTerminal_BLE.
+     *
+     * @see PlynxProtocol::run, PlynxProtocol::connected
+     */
     void setDeviceName(const char* name) {
         conn.setDeviceName(name);
     }

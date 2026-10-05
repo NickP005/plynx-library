@@ -73,6 +73,15 @@ public:
         : Base(transp)
     {}
 
+    /**
+     * @brief Sets the token and the server, without connecting yet.
+     *
+     * @param auth      The auth token of the board, from the Plynx app.
+     * @param domain    The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
+     * @param port      The port of the server.
+     *
+     * @see PlynxProtocol::run, PlynxProtocol::connected
+     */
     void config(const char* auth,
                 const char* domain = PLYNX_DEFAULT_DOMAIN,
                 uint16_t port      = PLYNX_DEFAULT_PORT)
@@ -81,6 +90,15 @@ public:
         this->conn.begin(domain, port);
     }
 
+    /**
+     * @brief Sets the token and the server, without connecting yet.
+     *
+     * @param auth      The auth token of the board, from the Plynx app.
+     * @param addr      The IP address of the server.
+     * @param port      The port of the server.
+     *
+     * @see PlynxProtocol::run, PlynxProtocol::connected
+     */
     void config(const char* auth,
                 IPAddress addr,
                 uint16_t port      = PLYNX_DEFAULT_PORT)
@@ -89,6 +107,21 @@ public:
         this->conn.begin(addr, port);
     }
 
+    /**
+     * @brief Connects a Particle board to the Plynx server, and waits until it is done.
+     *
+     * @param auth      The auth token of the board, from the Plynx app.
+     * @param domain    The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
+     * @param port      The port of the server.
+     *
+     * @par Where to call
+     * In setup(), once. The whole sketch is in examples/Boards_WiFi/RedBear_Duo_WiFi.
+     *
+     * @warning It waits without a time limit. Turn on PLYNX_PRINT to read
+     * why when setup() does not end.
+     *
+     * @see PlynxProtocol::run, PlynxProtocol::connected
+     */
     void begin( const char* auth,
                 const char* domain = PLYNX_DEFAULT_DOMAIN,
                 uint16_t port      = PLYNX_DEFAULT_PORT)
@@ -98,6 +131,21 @@ public:
         while(this->connect() != true) {}
     }
 
+    /**
+     * @brief Connects a Particle board to a Plynx server given by its IP address, and waits until it is done.
+     *
+     * @param auth      The auth token of the board, from the Plynx app.
+     * @param addr      The IP address of the server.
+     * @param port      The port of the server.
+     *
+     * @par Where to call
+     * In setup(), once. The whole sketch is in examples/Boards_WiFi/RedBear_Duo_WiFi.
+     *
+     * @warning It waits without a time limit. Turn on PLYNX_PRINT to read
+     * why when setup() does not end.
+     *
+     * @see PlynxProtocol::run, PlynxProtocol::connected
+     */
     void begin( const char* auth,
                 IPAddress addr,
                 uint16_t port      = PLYNX_DEFAULT_PORT)

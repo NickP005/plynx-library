@@ -34,6 +34,14 @@ public:
         : Base(transp)
     {}
 
+    /**
+     * @brief Joins a WiFi network. begin() calls it for you.
+     *
+     * @param ssid      The name of the WiFi network.
+     * @param pass      The password of the WiFi network.
+     *
+     * @see begin
+     */
     void connectWiFi(const char* ssid, const char* pass)
     {
         int status = WiFi.status();
@@ -64,6 +72,15 @@ public:
         PLYNX_LOG_IP("IP: ", myip);
     }
 
+    /**
+     * @brief Sets the token and the server, without connecting yet.
+     *
+     * @param auth      The auth token of the board, from the Plynx app.
+     * @param domain    The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
+     * @param port      The port of the server.
+     *
+     * @see PlynxProtocol::run, PlynxProtocol::connected
+     */
     void config(const char* auth,
                 const char* domain = PLYNX_DEFAULT_DOMAIN,
                 uint16_t    port   = PLYNX_SERVER_PORT)
@@ -72,6 +89,15 @@ public:
         this->conn.begin(domain, port);
     }
 
+    /**
+     * @brief Sets the token and the server, without connecting yet.
+     *
+     * @param auth      The auth token of the board, from the Plynx app.
+     * @param ip        The IP address of the server.
+     * @param port      The port of the server.
+     *
+     * @see PlynxProtocol::run, PlynxProtocol::connected
+     */
     void config(const char* auth,
                 IPAddress   ip,
                 uint16_t    port = PLYNX_SERVER_PORT)
@@ -80,6 +106,23 @@ public:
         this->conn.begin(ip, port);
     }
 
+    /**
+     * @brief Connects a board with a WizFi250 or WizFi310 module to the WiFi and to the Plynx server, and waits until both are done.
+     *
+     * @param auth      The auth token of the board, from the Plynx app.
+     * @param ssid      The name of the WiFi network.
+     * @param pass      The password of the WiFi network.
+     * @param domain    The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
+     * @param port      The port of the server.
+     *
+     * @par Where to call
+     * In setup(), once. The whole sketch is in examples/Boards_WiFi/WizFi250.
+     *
+     * @warning It waits without a time limit. Turn on PLYNX_PRINT to read
+     * why when setup() does not end.
+     *
+     * @see PlynxProtocol::run, PlynxProtocol::connected
+     */
     void begin(const char* auth,
                const char* ssid,
                const char* pass,
@@ -91,6 +134,23 @@ public:
         while(this->connect() != true) {}
     }
 
+    /**
+     * @brief Connects a board with a WizFi250 or WizFi310 module to the WiFi and to a Plynx server given by its IP address, and waits until both are done.
+     *
+     * @param auth      The auth token of the board, from the Plynx app.
+     * @param ssid      The name of the WiFi network.
+     * @param pass      The password of the WiFi network.
+     * @param ip        The IP address of the server.
+     * @param port      The port of the server.
+     *
+     * @par Where to call
+     * In setup(), once. The whole sketch is in examples/Boards_WiFi/WizFi250.
+     *
+     * @warning It waits without a time limit. Turn on PLYNX_PRINT to read
+     * why when setup() does not end.
+     *
+     * @see PlynxProtocol::run, PlynxProtocol::connected
+     */
     void begin(const char* auth,
                const char* ssid,
                const char* pass,

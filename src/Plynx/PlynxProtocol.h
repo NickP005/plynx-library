@@ -70,6 +70,17 @@ __attribute__((weak)) void PlynxOtaDispatch(PlynxReq& req, const PlynxParam& par
 #endif
 #endif // ESP32 || ESP8266
 
+/**
+ * @brief The part of the Plynx object that connects to the server and keeps
+ * the connection alive.
+ *
+ * The board header creates the global object `Plynx` from a class built on
+ * this one, so a sketch calls these functions as `Plynx.run()`,
+ * `Plynx.connected()` and so on. The functions that send values are in
+ * PlynxApi, and `begin()` and `config()` are in the class of each board.
+ *
+ * @see PlynxApi, PlynxWifi
+ */
 template <class Transp>
 class PlynxProtocol
     : public PlynxApi< PlynxProtocol<Transp> >
@@ -96,8 +107,75 @@ public:
         , state(CONNECTING)
     {}
 
+    /**
+     * @brief Tells whether the board is connected to the server right now.
+     *
+     * It turns true when the server accepts the token, and false as soon as
+     * the board notices that the connection dropped. It says nothing about the
+     * WiFi, which can be up while the server is unreachable.
+     *
+     * @return true when the board is connected and logged in to the server.
+     *
+     * @par Where to call
+     * Anywhere. Typical uses are an LED that shows the link, or skipping work
+     * that only makes sense online.
+     *
+     * @code
+     * PlynxTimer timer;
+     * const int linkLed = 2;   // the pin of your LED
+     *
+     * void showLink()
+     * {
+     *   digitalWrite(linkLed, Plynx.connected() ? HIGH : LOW);
+     * }
+     *
+     * void setup()
+     * {
+     *   pinMode(linkLed, OUTPUT);
+     *   // Plynx.begin(...) as in the example for your board
+     *   timer.setInterval(1000L, showLink);
+     * }
+     *
+     * void loop()
+     * {
+     *   Plynx.run();
+     *   timer.run();
+     * }
+     * @endcode
+     *
+     * @see PLYNX_CONNECTED, PLYNX_DISCONNECTED, isTokenInvalid
+     */
     bool connected() const { return state == CONNECTED; }
 
+    /**
+     * @brief Tells whether the server refused the token of this board.
+     *
+     * It turns true when the server answers that the auth token does not
+     * exist. The library then stops trying, until connect() is called again.
+     * With PLYNX_PRINT defined the serial monitor shows "Invalid auth token".
+     *
+     * @return true after the server refused the token.
+     *
+     * @par Where to call
+     * After connect() returns false, to tell a wrong token apart from a
+     * network that does not work.
+     *
+     * @code
+     * void tryOnce()
+     * {
+     *   if (!Plynx.connect()) {
+     *     if (Plynx.isTokenInvalid()) {
+     *       Serial.println("Check the auth token in the Plynx app");
+     *     }
+     *   }
+     * }
+     * @endcode
+     *
+     * @warning A token copied with a missing letter or an extra space is the
+     * usual cause. The token is the one shown for this board in the Plynx app.
+     *
+     * @see connect, connected
+     */
     bool isTokenInvalid() const { return state == TOKEN_INVALID; }
 
 #ifdef PLYNX_OTA_CALLS
@@ -110,6 +188,45 @@ public:
     const Transp& transportConn() const { return conn; }
 #endif
 
+    /**
+     * @brief Connects to the server and waits until it is done or the time is
+     * over.
+     *
+     * It closes any open connection, then tries again and again until the
+     * server accepts the token or `timeout` milliseconds have passed. During
+     * the wait it runs Plynx.run(), so PLYNX_CONNECTED() runs as soon as the
+     * board is in.
+     *
+     * @param timeout  The longest wait in milliseconds. The default is three
+     *                 times PLYNX_TIMEOUT_MS, 18 seconds.
+     * @return true when the board is connected.
+     *
+     * @par Where to call
+     * In setup() after config(), when the sketch has to keep working without a
+     * connection. Plynx.begin() calls it for you and waits without a limit.
+     *
+     * @code
+     * #include <PlynxSimpleEsp32.h>
+     *
+     * char auth[] = "YourAuthToken";
+     *
+     * void setup()
+     * {
+     *   WiFi.begin("YourWiFiName", "YourWiFiPassword");
+     *   Plynx.config(auth);
+     *   if (!Plynx.connect(10000)) {
+     *     // offline for now, Plynx.run() keeps trying in loop()
+     *   }
+     * }
+     *
+     * void loop()
+     * {
+     *   Plynx.run();
+     * }
+     * @endcode
+     *
+     * @see config, run, disconnect, isTokenInvalid
+     */
     bool connect(uint32_t timeout = PLYNX_TIMEOUT_MS*3) {
         conn.disconnect();
         state = CONNECTING;
@@ -122,12 +239,74 @@ public:
         return state == CONNECTED;
     }
 
+    /**
+     * @brief Closes the connection to the server and keeps it closed.
+     *
+     * After this call Plynx.run() does nothing and the board does not
+     * reconnect by itself, until connect() is called. PLYNX_DISCONNECTED()
+     * does not run for a disconnect asked by the sketch.
+     *
+     * @par Where to call
+     * Before a long task that must not be disturbed, before deep sleep, or to
+     * save power on a battery board.
+     *
+     * @code
+     * void goOffline()
+     * {
+     *   Plynx.disconnect();
+     * }
+     *
+     * void goOnline()
+     * {
+     *   Plynx.connect();
+     * }
+     * @endcode
+     *
+     * @see connect, connected, PLYNX_DISCONNECTED
+     */
     void disconnect() {
         conn.disconnect();
         state = DISCONNECTED;
         PLYNX_LOG1(PLYNX_F("Disconnected"));
     }
 
+    /**
+     * @brief Keeps the board connected and runs the handlers for what arrives
+     * from the app.
+     *
+     * Each call reads the messages that arrived, runs the matching
+     * PLYNX_WRITE() and PLYNX_READ() handlers, sends the heartbeat that keeps
+     * the connection open and, when the connection dropped, tries again every
+     * 5 seconds. Handlers run only inside this call.
+     *
+     * @param avail  true when the sketch already knows that data is waiting.
+     *               Leave it out.
+     * @return false when the board is offline, after disconnect(), or when the
+     *         connection dropped during this call. true otherwise.
+     *
+     * @par Where to call
+     * In loop(), at every turn, and nowhere else.
+     *
+     * @code
+     * PlynxTimer timer;
+     *
+     * void loop()
+     * {
+     *   Plynx.run();
+     *   timer.run();
+     * }
+     * @endcode
+     *
+     * @warning A long delay() in loop() stops Plynx.run(). The app waits for
+     * the board, and after about a minute without news from the server
+     * (PLYNX_HEARTBEAT plus three times PLYNX_TIMEOUT_MS) the board drops the
+     * connection and reconnects. Use a PlynxTimer to do things later.
+     *
+     * @warning A `while` loop that waits for a button or a sensor blocks
+     * Plynx.run() in the same way.
+     *
+     * @see PlynxTimer, connect, connected, PLYNX_HEARTBEAT
+     */
     bool run(bool avail = false);
 
     // TODO: Fixme
@@ -506,10 +685,37 @@ int PlynxProtocol<Transp>::readHeader(PlynxHeader& hdr)
 }
 
 #ifndef PLYNX_SEND_THROTTLE
+/**
+ * @brief The pause in milliseconds after each piece of data the board sends.
+ *
+ * The default is 0. Some Bluetooth and serial modules lose data when it
+ * arrives too fast, and the shells for those boards set it for you.
+ *
+ * @code
+ * #define PLYNX_SEND_THROTTLE 20
+ * @endcode
+ *
+ * @see PLYNX_SEND_CHUNK
+ */
 #define PLYNX_SEND_THROTTLE 0
 #endif
 
 #ifndef PLYNX_SEND_CHUNK
+/**
+ * @brief The largest piece of data, in bytes, the board writes in one go.
+ *
+ * It applies to the boards that build each message whole before sending it
+ * (ESP32, ESP8266 and any board with PLYNX_SEND_ATOMIC). A longer message goes
+ * out in several pieces, each followed by the PLYNX_SEND_THROTTLE pause. The
+ * default is large enough to send every message whole. The ESP32 BLE shells
+ * set 20, the size of one BLE packet.
+ *
+ * @code
+ * #define PLYNX_SEND_CHUNK 20
+ * @endcode
+ *
+ * @see PLYNX_SEND_THROTTLE
+ */
 #define PLYNX_SEND_CHUNK 1024 // Just a big number
 #endif
 

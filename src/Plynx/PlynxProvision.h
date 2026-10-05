@@ -43,6 +43,20 @@
 // Well-known setup PSK: obfuscation + iOS auto-join, not secrecy. The
 // provisioning window is short and the token only travels TO the board.
 #ifndef PLYNX_PROV_AP_PASS
+/**
+ * @brief The password of the setup hotspot Plynx-XXXX, "plynxsetup".
+ *
+ * The Plynx app knows it and joins the hotspot by itself. It is the same for
+ * every board, so it keeps away casual neighbours and nothing more.
+ *
+ * @code
+ * #define PLYNX_PROV_AP_PASS "plynxsetup"
+ * #include <PlynxSimpleEsp32.h>
+ * @endcode
+ *
+ * @warning The Plynx app joins only with the default password. A different
+ * one has to be typed by hand in the WiFi settings of the phone.
+ */
 #define PLYNX_PROV_AP_PASS    "plynxsetup"
 #endif
 #ifndef PLYNX_PROV_PORT
@@ -51,11 +65,33 @@
 // Provisioning window; on timeout the board reboots (and re-enters AP if
 // still unconfigured).
 #ifndef PLYNX_PROV_TIMEOUT_MS
+/**
+ * @brief How long, in milliseconds, the setup hotspot stays open before the
+ * board restarts and tries again. The default is 180000, three minutes.
+ *
+ * @code
+ * #define PLYNX_PROV_TIMEOUT_MS 600000UL   // ten minutes to finish the setup
+ * #include <PlynxSimpleEsp32.h>
+ * @endcode
+ *
+ * @see PLYNX_PROV_WIFI_TIMEOUT_MS
+ */
 #define PLYNX_PROV_TIMEOUT_MS 180000UL
 #endif
 // Bounded WiFi connect for the auto path (a typo'd password must fall back
 // to the AP, never hang forever like the classic path is allowed to).
 #ifndef PLYNX_PROV_WIFI_TIMEOUT_MS
+/**
+ * @brief How long, in milliseconds, Plynx.begin() with no parameters tries the
+ * saved WiFi before it opens the setup hotspot again. The default is 30000.
+ *
+ * @code
+ * #define PLYNX_PROV_WIFI_TIMEOUT_MS 60000UL   // a slow router
+ * #include <PlynxSimpleEsp32.h>
+ * @endcode
+ *
+ * @see PLYNX_PROV_TIMEOUT_MS
+ */
 #define PLYNX_PROV_WIFI_TIMEOUT_MS 30000UL
 #endif
 
@@ -140,7 +176,10 @@ public:
 #endif
     }
 
-    /// Stable per-chip AP name: "Plynx-XXXX"
+    /// @brief Writes the name of the setup WiFi network, "Plynx-XXXX", the
+    /// same at every start of one chip.
+    /// @param out  Where the name is written.
+    /// @param len  The size of out, at least 11.
     static void apName(char* out, size_t len)
     {
 #if defined(ESP32)
@@ -153,8 +192,13 @@ public:
         snprintf(out, len, "Plynx-%04X", uniq);
     }
 
+    /// @brief Joins a WiFi network and gives up after a time limit.
     /// Bounded STA connect for the auto path. Classic begin() keeps its own
     /// legacy behavior; this one must fail cleanly back into the AP.
+    /// @param ssid       The name of the WiFi network.
+    /// @param pass       The password, or an empty text for an open network.
+    /// @param timeoutMs  How long to try, in milliseconds.
+    /// @return true when the board joined the network in time.
     static bool connectBounded(const char* ssid, const char* pass, uint32_t timeoutMs)
     {
         WiFi.mode(WIFI_STA);
@@ -176,8 +220,11 @@ public:
         return true;
     }
 
+    /// @brief Opens the setup WiFi network and waits for the app to send the
+    /// WiFi name, the password and the token.
     /// Blocks serving the SoftAP config endpoint. Reboots on success or when
     /// the provisioning window expires. cfg.lastError is reported by /status.
+    /// @param cfg  The saved settings. Its lastError is shown to the app.
     static void run(PlynxProvConfig& cfg)
     {
         char ssidBuff[16];

@@ -17,11 +17,79 @@
 
 #include <Plynx/PlynxWidgetBase.h>
 
+/**
+ * @brief Lists and sends the files of an SD card when a widget asks for them
+ * on a virtual pin.
+ *
+ * It answers two commands written to its pin. "ls" followed by a folder sends
+ * one value per entry (the name, then the size or "/" for a folder). "get"
+ * followed by a file sends the file in pieces of 29 bytes. It needs the SD
+ * library and `#include <WidgetSD.h>` after the board header.
+ *
+ * @par App widget
+ * The Plynx app (October 2026) has no widget that sends these commands. A
+ * sketch or another board can send them through WidgetBridge.
+ *
+ * @code
+ * #include <PlynxSimpleEthernet.h>
+ * #include <SD.h>
+ * #include <WidgetSD.h>
+ *
+ * WidgetSD sd;
+ * PLYNX_ATTACH_WIDGET(sd, V15);
+ *
+ * void setup()
+ * {
+ *   SD.begin(4);   // 4 is the SD slot of the Ethernet shield
+ * }
+ * @endcode
+ *
+ * @warning In this version WidgetSD does not compile for ESP32 and ESP8266
+ * boards. Their SD library reads into a `uint8_t` buffer and WidgetSD gives it
+ * a `char` buffer, so the build stops with "invalid conversion from 'char*'
+ * to 'uint8_t*'". It compiles for AVR boards such as the Arduino Mega.
+ *
+ * @see PLYNX_ATTACH_WIDGET
+ */
 class WidgetSD
     : public PlynxWidgetBase
 {
 public:
+    /**
+     * @brief Creates the SD object. Give the pin here, or later with
+     * PLYNX_ATTACH_WIDGET().
+     * @param vPin  The virtual pin that carries the commands.
+     *
+     * @code
+     * #include <PlynxSimpleEthernet.h>
+     * #include <SD.h>
+     * #include <WidgetSD.h>
+     *
+     * WidgetSD sd(V15);
+     * @endcode
+     */
     WidgetSD(uint8_t vPin = -1) : PlynxWidgetBase(vPin) {}
+
+    /**
+     * @brief Answers an "ls" or a "get" command. PLYNX_ATTACH_WIDGET() calls
+     * it.
+     *
+     * @param request  The request, with the pin to answer on.
+     * @param param    The command and its folder or file.
+     *
+     * @code
+     * #include <PlynxSimpleEthernet.h>
+     * #include <SD.h>
+     * #include <WidgetSD.h>
+     *
+     * WidgetSD sd(V15);
+     *
+     * PLYNX_WRITE(V15)
+     * {
+     *   sd.onWrite(request, param);   // what PLYNX_ATTACH_WIDGET does
+     * }
+     * @endcode
+     */
     void onWrite(PlynxReq& request, const PlynxParam& param);
 };
 

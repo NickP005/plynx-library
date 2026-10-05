@@ -69,6 +69,14 @@ public:
         , wifly(NULL)
     {}
 
+    /**
+     * @brief Joins a WiFi network. begin() calls it for you.
+     *
+     * @param ssid      The name of the WiFi network.
+     * @param pass      The password of the WiFi network.
+     *
+     * @see begin
+     */
     void connectWiFi(const char* ssid, const char* pass) {
         if (!wifly->isAssociated()) {
             PLYNX_LOG2(PLYNX_F("Connecting to "), ssid);
@@ -89,6 +97,16 @@ public:
         wifly->setIpFlags(1 << 1);
     }
 
+    /**
+     * @brief Sets the token and the server, without connecting yet.
+     *
+     * @param rnxv      The WiFly module object of the sketch.
+     * @param auth      The auth token of the board, from the Plynx app.
+     * @param domain    The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
+     * @param port      The port of the server.
+     *
+     * @see PlynxProtocol::run, PlynxProtocol::connected
+     */
     void config(WiFly&      rnxv,
                 const char* auth,
                 const char* domain = PLYNX_DEFAULT_DOMAIN,
@@ -100,6 +118,24 @@ public:
         this->conn.begin(domain, port);
     }
 
+    /**
+     * @brief Connects a board with an RN-XV WiFly module to the WiFi and to the Plynx server, and waits until both are done.
+     *
+     * @param auth      The auth token of the board, from the Plynx app.
+     * @param rnxv      The WiFly module object of the sketch.
+     * @param ssid      The name of the WiFi network.
+     * @param pass      The password of the WiFi network.
+     * @param domain    The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
+     * @param port      The port of the server.
+     *
+     * @par Where to call
+     * In setup(), once. The whole sketch is in examples/Boards_WiFi/RN_XV_WiFly.
+     *
+     * @warning It waits without a time limit. Turn on PLYNX_PRINT to read
+     * why when setup() does not end.
+     *
+     * @see PlynxProtocol::run, PlynxProtocol::connected
+     */
     void begin( const char* auth,
                 WiFly&      rnxv,
                 const char* ssid,

@@ -1,5 +1,5 @@
 /**
- * @file       PlynxSimpleUserManaged.h
+ * @file       PlynxSimpleUserDefined.h
  * @author     Volodymyr Shymanskyy
  * @license    This project is released under the MIT License (MIT)
  * @copyright  Copyright (c) 2015 Volodymyr Shymanskyy
@@ -69,6 +69,16 @@ public:
         : Base(transp)
     {}
 
+    /**
+     * @brief Starts the connection of a board with a connection written by the sketch with the token of the board.
+     *
+     * @param auth      The auth token of the board, from the Plynx app.
+     *
+     * @par Where to call
+     * In setup(), once. The whole sketch is in the comments at the top of PlynxSimpleUserDefined.h.
+     *
+     * @see PlynxProtocol::run, PlynxProtocol::connected
+     */
     void begin(const char* auth)
     {
         Base::begin(auth);

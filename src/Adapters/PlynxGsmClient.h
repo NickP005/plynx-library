@@ -89,6 +89,16 @@ public:
         return true;
     }
 
+    /**
+     * @brief Sets the token and the server, without connecting yet.
+     *
+     * @param gsm       The modem object of the sketch.
+     * @param auth      The auth token of the board, from the Plynx app.
+     * @param domain    The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
+     * @param port      The port of the server.
+     *
+     * @see PlynxProtocol::run, PlynxProtocol::connected
+     */
     void config(TinyGsm&    gsm,
                 const char* auth,
                 const char* domain = PLYNX_DEFAULT_DOMAIN,
@@ -101,6 +111,25 @@ public:
         this->conn.begin(domain, port);
     }
 
+    /**
+     * @brief Connects a board with a GSM modem driven by TinyGSM to the mobile network and to the Plynx server, and waits until both are done.
+     *
+     * @param auth      The auth token of the board, from the Plynx app.
+     * @param gsm       The modem object of the sketch.
+     * @param apn       The APN of the mobile operator.
+     * @param user      The user name for the APN, often empty.
+     * @param pass      The password for the APN, often empty.
+     * @param domain    The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
+     * @param port      The port of the server.
+     *
+     * @par Where to call
+     * In setup(), once. The whole sketch is in examples/Boards_GSM/TinyGSM_SIM800_SIM900.
+     *
+     * @warning It waits without a time limit. Turn on PLYNX_PRINT to read
+     * why when setup() does not end.
+     *
+     * @see PlynxProtocol::run, PlynxProtocol::connected
+     */
     void begin(const char* auth,
                TinyGsm&    gsm,
                const char* apn,

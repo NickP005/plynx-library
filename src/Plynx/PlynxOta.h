@@ -44,8 +44,8 @@
  *        (Plynx.connected()), so nothing pre-auth is ever flashed;
  *     2. the download host is pinned to the server endpoint the sketch is
  *        configured against (exact, case-insensitive). Pin a different
- *        host with #define PLYNX_OTA_HOST "fw.example.com", or drop the
- *        check with #define PLYNX_OTA_NO_HOST_PIN.
+ *        host with `#define PLYNX_OTA_HOST "fw.example.com"`, or drop the
+ *        check with `#define PLYNX_OTA_NO_HOST_PIN`.
  *   A full MITM on an sl=0 link can still defeat both. Fleets that care
  *   should use an authenticated link (sl>=1), define PLYNX_NO_OTA, or
  *   override PLYNX_WRITE(InternalPinOTA) with a handler that verifies a
@@ -66,9 +66,9 @@
  * namespace: after PLYNX_OTA_MAX_BOOT_TRIES boots armed with pending-confirm
  * and still unconfirmed, the library rolls back immediately.
  *
- * Opt-out: #define PLYNX_NO_OTA before including PlynxSimpleEsp32/Esp8266.h
- * (drops all of this code from the build), or #define
- * PLYNX_NO_BOOTLOADER_ROLLBACK to keep OTA but leave the bootloader hook
+ * Opt-out: `#define PLYNX_NO_OTA` before including PlynxSimpleEsp32/Esp8266.h
+ * (drops all of this code from the build), or
+ * `#define PLYNX_NO_BOOTLOADER_ROLLBACK` to keep OTA but leave the bootloader hook
  * alone -- REQUIRED alongside ESP RainMaker, which defines the same symbol.
  * A sketch-level
  * PLYNX_WRITE(InternalPinOTA) override always wins over the built-in
@@ -147,6 +147,26 @@ PlynxSimpleEsp32.h / PlynxSimpleEsp8266.h FIRST, or define PLYNX_NO_OTA.
 // would silently inherit a much stricter deadline that now also has to cover
 // setup(), WiFi association and DHCP.
 #ifndef PLYNX_OTA_GUARD_MS
+/**
+ * @brief How long, in milliseconds, a firmware just received over the air has
+ * to connect to the server before the ESP32 goes back to the previous one.
+ * The default is 180000, three minutes.
+ *
+ * The time counts from the start of the board, setup() included. Any reset
+ * before the first connection also brings the old firmware back. Raise it for
+ * a sketch that spends long in setup() before Plynx.begin(), or a board that
+ * stays offline for long.
+ *
+ * @par Where to call
+ * Above `<PlynxSimpleEsp32.h>`.
+ *
+ * @code
+ * #define PLYNX_OTA_GUARD_MS 600000UL   // ten minutes
+ * #include <PlynxSimpleEsp32.h>
+ * @endcode
+ *
+ * @see PLYNX_NO_BOOTLOADER_ROLLBACK, PLYNX_NO_OTA
+ */
 #define PLYNX_OTA_GUARD_MS          180000UL
 #endif
 

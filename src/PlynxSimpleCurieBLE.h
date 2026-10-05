@@ -134,6 +134,17 @@ public:
         : Base(transp)
     {}
 
+    /**
+     * @brief Starts the connection of an Arduino 101 over Bluetooth Low Energy with the token of the board.
+     *
+     * @param per       The BLE peripheral object of the sketch.
+     * @param auth      The auth token of the board, from the Plynx app.
+     *
+     * @par Where to call
+     * In setup(), once. The whole sketch is in examples/Boards_Bluetooth/Arduino_101_BLE.
+     *
+     * @see PlynxProtocol::run, PlynxProtocol::connected
+     */
     void begin(BLEPeripheral& per, const char* auth)
     {
         Base::begin(auth);
@@ -142,6 +153,19 @@ public:
     }
 
     // Please use Plynx.begin(BLEPeripheral, "auth")
+    /**
+     * @brief Starts the connection of an Arduino 101 over Bluetooth Low Energy with the token of the board.
+     *
+     * @param auth      The auth token of the board, from the Plynx app.
+     * @param per       The BLE peripheral object of the sketch.
+     *
+     * @par Where to call
+     * In setup(), once. The whole sketch is in examples/Boards_Bluetooth/Arduino_101_BLE.
+     *
+     * @deprecated Write the peripheral first, as in begin(per, auth).
+     *
+     * @see PlynxProtocol::run, PlynxProtocol::connected
+     */
     PLYNX_DEPRECATED
     void begin(const char* auth, BLEPeripheral& per)
     {

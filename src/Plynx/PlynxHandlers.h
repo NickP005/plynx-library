@@ -14,8 +14,42 @@
 #include <Plynx/PlynxConfig.h>
 #include <Plynx/PlynxParam.h>
 
-// Helper macro
+/**
+ * @name Virtual pins
+ * The names V0, V1, V2 and so on, one for each virtual pin.
+ * @{
+ */
 
+/**
+ * @brief The name of a virtual pin, a numbered channel between the sketch and
+ * the app.
+ *
+ * A virtual pin carries any value, a number or a text, in both directions.
+ * The app writes it and the sketch reacts in PLYNX_WRITE(). The sketch writes
+ * it with Plynx.virtualWrite() and the app shows the value. V0 to V31 exist on
+ * every board. ESP32, ESP8266, SAMD boards and Linux have V0 to V127
+ * (PLYNX_USE_128_VPINS).
+ *
+ * @par App widget
+ * Every widget whose pin is set to a V pin in the app.
+ *
+ * @code
+ * PLYNX_WRITE(V1)                // a Button in the app writes V1
+ * {
+ *   digitalWrite(2, param.asInt());
+ * }
+ *
+ * void sendLevel()               // a Gauge in the app shows V2
+ * {
+ *   Plynx.virtualWrite(V2, analogRead(A0));
+ * }
+ * @endcode
+ *
+ * @warning On a board with 32 virtual pins, a name from V32 up stops the build
+ * with "was not declared in this scope". Pick a pin from V0 to V31 in the app.
+ *
+ * @see PLYNX_WRITE, PLYNX_READ, PlynxApi::virtualWrite, PLYNX_USE_128_VPINS
+ */
 #define V0  0
 #define V1  1
 #define V2  2
@@ -147,6 +181,8 @@
   #define V127 127
 #endif
 
+/** @} */
+
 // Initial syntax:
 #define PLYNX_WRITE_2(pin) \
     void PlynxWidgetWrite ## pin (PlynxReq PLYNX_UNUSED &request, const PlynxParam PLYNX_UNUSED &param)
@@ -154,10 +190,140 @@
 #define PLYNX_READ_2(pin)  \
     void PlynxWidgetRead ## pin  (PlynxReq PLYNX_UNUSED &request)
 
+/**
+ * @brief Writes the handler that runs for a virtual pin written by the app
+ * when that pin has no PLYNX_WRITE() of its own.
+ *
+ * Inside, `request.pin` is the number of the pin and `param` holds the value.
+ * Without this handler such values are dropped, and with PLYNX_PRINT defined
+ * the serial monitor shows "No handler for writing to pin".
+ *
+ * @par Where to call
+ * At the top level of the sketch, outside any function, once.
+ *
+ * @par App widget
+ * Any widget that writes a virtual pin, such as a Button or a Slider.
+ *
+ * @code
+ * PLYNX_WRITE_DEFAULT()
+ * {
+ *   Serial.print("V");
+ *   Serial.print(request.pin);
+ *   Serial.print(" is now ");
+ *   Serial.println(param.asStr());
+ * }
+ * @endcode
+ *
+ * @see PLYNX_WRITE, PLYNX_READ_DEFAULT
+ */
 #define PLYNX_WRITE_DEFAULT() PLYNX_WRITE_2(Default)
+
+/**
+ * @brief Writes the handler that runs when the app asks for a virtual pin that
+ * has no PLYNX_READ() of its own.
+ *
+ * Inside, `request.pin` is the number of the pin. Answer with
+ * Plynx.virtualWrite() on that pin.
+ *
+ * @par Where to call
+ * At the top level of the sketch, outside any function, once.
+ *
+ * @par App widget
+ * The widgets that read a pin at an interval, such as a Value Display or a
+ * Gauge.
+ *
+ * @code
+ * PLYNX_READ_DEFAULT()
+ * {
+ *   Plynx.virtualWrite(request.pin, millis() / 1000);
+ * }
+ * @endcode
+ *
+ * @see PLYNX_READ, PLYNX_WRITE_DEFAULT
+ */
 #define PLYNX_READ_DEFAULT()  PLYNX_READ_2(Default)
 
+/**
+ * @brief Writes the code that runs on the board every time the app writes a
+ * virtual pin.
+ *
+ * Write it at the top level of the sketch, followed by a block in braces. The
+ * library calls that block by itself whenever a widget sends a value to the
+ * pin, for example when a Button is pressed or a Slider moves. Inside the
+ * block, `param` holds the new value.
+ *
+ * @param pin  The virtual pin, written V0, V1, V2 and so on.
+ *
+ * @par Where to call
+ * At the top level of the sketch, outside setup() and loop(). The block runs
+ * during Plynx.run().
+ *
+ * @par App widget
+ * Every widget that sends values to that pin, such as a Button, a Slider, a
+ * Step, a Joystick, an RGB Picker, a Menu, a Text Input or a Number Input.
+ *
+ * @code
+ * PLYNX_WRITE(V1)
+ * {
+ *   int on = param.asInt();         // a Button sends 1 when on, 0 when off
+ *   digitalWrite(2, on ? HIGH : LOW);
+ * }
+ *
+ * PLYNX_WRITE(V2)
+ * {
+ *   int red   = param[0].asInt();   // an RGB Picker sends three values
+ *   int green = param[1].asInt();
+ *   int blue  = param[2].asInt();
+ *   analogWrite(25, red);
+ *   analogWrite(26, green);
+ *   analogWrite(27, blue);
+ * }
+ * @endcode
+ *
+ * @note The block is a function the library calls. Writing a function with
+ * another name and the same body does nothing, because nobody calls it.
+ *
+ * @warning Keep the block short. A delay() or a long loop inside it stops
+ * Plynx.run() and the connection with it. Start long work with a PlynxTimer.
+ *
+ * @warning Each pin has one PLYNX_WRITE(). Writing two for the same pin stops
+ * the build with "redefinition".
+ *
+ * @see PlynxParam, PLYNX_READ, PlynxApi::syncVirtual, PLYNX_WRITE_DEFAULT
+ */
 #define PLYNX_WRITE(pin)      PLYNX_WRITE_2(pin)
+
+/**
+ * @brief Writes the code that runs when the app asks the board for the value
+ * of a virtual pin.
+ *
+ * Write it at the top level of the sketch, followed by a block in braces.
+ * The server asks while the project is open on a phone, at the reading
+ * interval of the widgets that read the pin (Value Display, Labeled Value,
+ * Gauge, Level Display and LCD). The block answers with Plynx.virtualWrite()
+ * on the same pin.
+ *
+ * @param pin  The virtual pin, written V0, V1, V2 and so on.
+ *
+ * @par Where to call
+ * At the top level of the sketch, outside setup() and loop(). The block runs
+ * during Plynx.run().
+ *
+ * @par App widget
+ * Value Display, Labeled Value, Gauge, Level Display and LCD, when they read
+ * the pin at an interval.
+ *
+ * @code
+ * PLYNX_READ(V5)
+ * {
+ *   Plynx.virtualWrite(V5, millis() / 1000);   // the answer goes to V5
+ * }
+ * @endcode
+ *
+ * @warning Without a Plynx.virtualWrite() inside, the widget stays empty.
+ *
+ * @see PLYNX_WRITE, PlynxApi::virtualWrite, PLYNX_READ_DEFAULT
+ */
 #define PLYNX_READ(pin)       PLYNX_READ_2(pin)
 
 // New, more readable syntax:
@@ -167,29 +333,198 @@
 #define PLYNX_OUT_2(pin) \
     void PlynxWidgetRead ## pin  (PlynxReq PLYNX_UNUSED &request)
 
+/**
+ * @brief Another name for PLYNX_WRITE_DEFAULT(), where the value is called
+ * `getValue` instead of `param`.
+ *
+ * @code
+ * PLYNX_INPUT_DEFAULT()
+ * {
+ *   Serial.println(getValue.asStr());
+ * }
+ * @endcode
+ *
+ * @see PLYNX_WRITE_DEFAULT
+ */
 #define PLYNX_INPUT_DEFAULT()   PLYNX_IN_2(Default)
+
+/**
+ * @brief Another name for PLYNX_READ_DEFAULT().
+ *
+ * @code
+ * PLYNX_OUTPUT_DEFAULT()
+ * {
+ *   Plynx.virtualWrite(request.pin, 0);
+ * }
+ * @endcode
+ *
+ * @see PLYNX_READ_DEFAULT
+ */
 #define PLYNX_OUTPUT_DEFAULT()  PLYNX_OUT_2(Default)
 
+/**
+ * @brief Another name for PLYNX_WRITE(), where the value is called `getValue`
+ * instead of `param`.
+ *
+ * @param pin  The virtual pin, written V0, V1, V2 and so on.
+ *
+ * @code
+ * PLYNX_INPUT(V1)
+ * {
+ *   digitalWrite(2, getValue.asInt());
+ * }
+ * @endcode
+ *
+ * @see PLYNX_WRITE
+ */
 #define PLYNX_INPUT(pin)        PLYNX_IN_2(pin)
+
+/**
+ * @brief Another name for PLYNX_READ().
+ *
+ * @param pin  The virtual pin, written V0, V1, V2 and so on.
+ *
+ * @code
+ * PLYNX_OUTPUT(V5)
+ * {
+ *   Plynx.virtualWrite(V5, analogRead(A0));
+ * }
+ * @endcode
+ *
+ * @see PLYNX_READ
+ */
 #define PLYNX_OUTPUT(pin)       PLYNX_OUT_2(pin)
 
 // Additional handlers
+
+/**
+ * @brief Writes the code that runs every time the board connects to the
+ * server, the first time and after every reconnect.
+ *
+ * Write it at the top level of the sketch, followed by a block in braces. It
+ * is the place to ask the server for the last values with
+ * Plynx.syncAll(), to send the current state with Plynx.virtualWrite(), and to
+ * set things that live only as long as the connection, such as
+ * WidgetBridge::setAuthToken() and WidgetRTC::begin().
+ *
+ * @par Where to call
+ * At the top level of the sketch, once. It runs inside Plynx.run() or
+ * Plynx.connect().
+ *
+ * @code
+ * PLYNX_CONNECTED()
+ * {
+ *   Plynx.syncAll();                    // get the Buttons back in place
+ *   Plynx.virtualWrite(V9, "online");
+ * }
+ * @endcode
+ *
+ * @warning Keep it short. A long task here delays the first messages from
+ * the app.
+ *
+ * @see PLYNX_DISCONNECTED, PLYNX_APP_CONNECTED, PlynxApi::syncAll
+ */
 #define PLYNX_CONNECTED()    void PlynxOnConnected()
+
+/**
+ * @brief Writes the code that runs when the board loses the connection to the
+ * server.
+ *
+ * Write it at the top level of the sketch, followed by a block in braces. It
+ * runs when the board notices that the connection dropped. The library then
+ * tries to reconnect by itself during Plynx.run().
+ *
+ * @par Where to call
+ * At the top level of the sketch, once. It runs inside Plynx.run().
+ *
+ * @code
+ * PLYNX_DISCONNECTED()
+ * {
+ *   digitalWrite(2, LOW);     // an LED on pin 2 shows the link is down
+ * }
+ * @endcode
+ *
+ * @note It does not run after Plynx.disconnect(), which the sketch asked for.
+ * Values sent with Plynx.virtualWrite() while offline are lost.
+ *
+ * @see PLYNX_CONNECTED, PlynxProtocol::connected
+ */
 #define PLYNX_DISCONNECTED() void PlynxOnDisconnected()
 
 // Advanced functions
 
+/**
+ * @brief Creates an `int` variable that the app writes and reads on a virtual
+ * pin, with no handler to write.
+ *
+ * It writes the variable, a PLYNX_WRITE() that stores what the app sends,
+ * and a PLYNX_READ() that sends the variable back when the app asks.
+ *
+ * @param name  The name of the variable.
+ * @param pin   The virtual pin, written V0, V1, V2 and so on.
+ *
+ * @par Where to call
+ * At the top level of the sketch, outside any function.
+ *
+ * @par App widget
+ * A Slider, a Step or a Number Input to set it, a Value Display to read it.
+ *
+ * @code
+ * PLYNX_VAR_INT(threshold, V3)
+ *
+ * void checkLight()
+ * {
+ *   digitalWrite(2, analogRead(A0) > threshold ? HIGH : LOW);
+ * }
+ * @endcode
+ *
+ * @note It defines PLYNX_WRITE() and PLYNX_READ() for that pin, so the sketch
+ * cannot write its own for the same pin.
+ *
+ * @see PLYNX_VAR_LONG, PLYNX_VAR_DOUBLE, PLYNX_VAR_STRING
+ */
 #define PLYNX_VAR_INT(name, pin) \
     int name;  \
     PLYNX_WRITE(pin) { name = param.asInt(); } \
     PLYNX_READ(pin)  { Plynx.virtualWrite(pin, name); }
 
+/**
+ * @brief Creates a `long` variable that the app writes and reads on a virtual
+ * pin.
+ *
+ * The same as PLYNX_VAR_INT() for numbers too large for an `int`.
+ *
+ * @param name  The name of the variable.
+ * @param pin   The virtual pin, written V0, V1, V2 and so on.
+ *
+ * @code
+ * PLYNX_VAR_LONG(intervalMs, V4)
+ * @endcode
+ *
+ * @see PLYNX_VAR_INT
+ */
 #define PLYNX_VAR_LONG(name, pin) \
     long name;  \
     PLYNX_WRITE(pin) { name = param.asLong(); } \
     PLYNX_READ(pin)  { Plynx.virtualWrite(pin, name); }
 
 #ifndef PLYNX_NO_FLOAT
+/**
+ * @brief Creates a `double` variable that the app writes and reads on a
+ * virtual pin.
+ *
+ * The same as PLYNX_VAR_INT() for numbers with decimals. It does not exist
+ * with PLYNX_NO_FLOAT.
+ *
+ * @param name  The name of the variable.
+ * @param pin   The virtual pin, written V0, V1, V2 and so on.
+ *
+ * @code
+ * PLYNX_VAR_DOUBLE(targetCelsius, V6)
+ * @endcode
+ *
+ * @see PLYNX_VAR_INT
+ */
 #define PLYNX_VAR_DOUBLE(name, pin) \
     double name;  \
     PLYNX_WRITE(pin) { name = param.asDouble(); } \
@@ -197,6 +532,22 @@
 #endif
 
 #ifdef ARDUINO
+/**
+ * @brief Creates a `String` variable that the app writes and reads on a
+ * virtual pin.
+ *
+ * The same as PLYNX_VAR_INT() for text, such as the one typed in a Text
+ * Input widget.
+ *
+ * @param name  The name of the variable.
+ * @param pin   The virtual pin, written V0, V1, V2 and so on.
+ *
+ * @code
+ * PLYNX_VAR_STRING(greeting, V7)
+ * @endcode
+ *
+ * @see PLYNX_VAR_INT
+ */
 #define PLYNX_VAR_STRING(name, pin) \
     String name;  \
     PLYNX_WRITE(pin) { name = param.asStr(); } \
@@ -208,9 +559,23 @@
 extern "C" {
 #endif
 
+/**
+ * @brief What a handler knows about the request, available as `request`
+ * inside PLYNX_WRITE() and PLYNX_READ().
+ *
+ * @code
+ * PLYNX_WRITE_DEFAULT()
+ * {
+ *   int pin = request.pin;               // the virtual pin the app wrote
+ *   Plynx.virtualWrite(pin, param.asInt());
+ * }
+ * @endcode
+ *
+ * @see PLYNX_WRITE_DEFAULT, PLYNX_READ_DEFAULT
+ */
 struct PlynxReq
 {
-    uint8_t pin;
+    uint8_t pin;   ///< The number of the virtual pin, 1 for V1.
 };
 
 typedef void (*WidgetReadHandler)(PlynxReq PLYNX_UNUSED &request);
@@ -239,7 +604,58 @@ PLYNX_WRITE(InternalPinVFS);
 PLYNX_WRITE(InternalPinDBG);
 
 // Aliases
+
+/**
+ * @brief Writes the code that runs on the board when a phone with the Plynx
+ * app connects to the server.
+ *
+ * Write it at the top level of the sketch, followed by a block in braces. It
+ * lets the board send fresh values only while someone is looking. The server
+ * tells the board only for a project whose setting `isAppConnectedOn` is on.
+ * The Plynx app (October 2026) keeps that setting but has no switch for it,
+ * so in a project created in the app this handler does not run.
+ *
+ * @par Where to call
+ * At the top level of the sketch, once. It runs inside Plynx.run().
+ *
+ * @code
+ * bool someoneIsWatching = false;
+ *
+ * PLYNX_APP_CONNECTED()
+ * {
+ *   someoneIsWatching = true;
+ * }
+ *
+ * PLYNX_APP_DISCONNECTED()
+ * {
+ *   someoneIsWatching = false;
+ * }
+ * @endcode
+ *
+ * @see PLYNX_APP_DISCONNECTED, PLYNX_CONNECTED
+ */
 #define PLYNX_APP_CONNECTED()    PLYNX_WRITE(InternalPinACON)
+
+/**
+ * @brief Writes the code that runs on the board when the connection of the
+ * Plynx app to the server closes.
+ *
+ * Write it at the top level of the sketch, followed by a block in braces. Like
+ * PLYNX_APP_CONNECTED(), it runs only for a project whose setting
+ * `isAppConnectedOn` is on.
+ *
+ * @par Where to call
+ * At the top level of the sketch, once. It runs inside Plynx.run().
+ *
+ * @code
+ * PLYNX_APP_DISCONNECTED()
+ * {
+ *   Serial.println("Nobody is looking at the app");
+ * }
+ * @endcode
+ *
+ * @see PLYNX_APP_CONNECTED
+ */
 #define PLYNX_APP_DISCONNECTED() PLYNX_WRITE(InternalPinADIS)
 
 // Regular Virtual Pins

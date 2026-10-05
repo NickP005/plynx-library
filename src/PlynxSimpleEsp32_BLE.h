@@ -158,6 +158,31 @@ private:
     PlynxFifo<uint8_t, PLYNX_MAX_READBYTES*2> mBuffRX;
 };
 
+/**
+ * @brief The Plynx object of an ESP32 that talks to the Plynx app over
+ * Bluetooth Low Energy, created by `<PlynxSimpleEsp32_BLE.h>` as the global `Plynx`.
+ *
+ * The phone connects to the board and carries the data to the server, so the
+ * board needs no WiFi. begin() returns at once, and the board waits for the
+ * phone.
+ *
+ * @code
+ * #include <PlynxSimpleEsp32_BLE.h>
+ *
+ * void setup()
+ * {
+ *   Plynx.setDeviceName("Greenhouse");   // before begin()
+ *   Plynx.begin("YourAuthToken");
+ * }
+ *
+ * void loop()
+ * {
+ *   Plynx.run();
+ * }
+ * @endcode
+ *
+ * @see begin, setDeviceName
+ */
 class PlynxEsp32_BLE
     : public PlynxProtocol<PlynxTransportEsp32_BLE>
 {
@@ -168,6 +193,31 @@ public:
 
     {}
 
+    /**
+     * @brief Starts Bluetooth Low Energy with the token of the board and waits for the
+     * phone, without blocking.
+     *
+     * @param auth  The auth token of the board, from the Plynx app.
+     *
+     * @par Where to call
+     * In setup(), once, after setDeviceName().
+     *
+     * @code
+     * #include <PlynxSimpleEsp32_BLE.h>
+     *
+     * void setup()
+     * {
+     *   Plynx.begin("YourAuthToken");
+     * }
+     *
+     * void loop()
+     * {
+     *   Plynx.run();
+     * }
+     * @endcode
+     *
+     * @see setDeviceName
+     */
     void begin(const char* auth)
     {
         Base::begin(auth);
@@ -175,6 +225,27 @@ public:
         conn.begin();
     }
 
+    /**
+     * @brief Sets the name the phone shows when it looks for the board. The
+     * default is "Plynx".
+     *
+     * @param name  The name, such as "Greenhouse".
+     *
+     * @par Where to call
+     * In setup(), before begin(). The name is used when Bluetooth Low Energy starts.
+     *
+     * @code
+     * #include <PlynxSimpleEsp32_BLE.h>
+     *
+     * void setup()
+     * {
+     *   Plynx.setDeviceName("Greenhouse");
+     *   Plynx.begin("YourAuthToken");
+     * }
+     * @endcode
+     *
+     * @warning Called after begin(), it changes nothing.
+     */
     void setDeviceName(const char* name) {
         conn.setDeviceName(name);
     }

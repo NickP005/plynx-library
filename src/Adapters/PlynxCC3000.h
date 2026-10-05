@@ -84,6 +84,15 @@ public:
         : Base(transp), cc3000(cc3000)
     {}
 
+    /**
+     * @brief Joins a WiFi network. begin() calls it for you.
+     *
+     * @param ssid      The name of the WiFi network.
+     * @param pass      The password of the WiFi network.
+     * @param secmode   The WiFi security, such as WLAN_SEC_WPA2.
+     *
+     * @see begin
+     */
     void connectWiFi(const char* ssid,
                      const char* pass,
                      uint8_t     secmode)
@@ -143,6 +152,15 @@ public:
 #endif
     }
 
+    /**
+     * @brief Sets the token and the server, without connecting yet.
+     *
+     * @param auth      The auth token of the board, from the Plynx app.
+     * @param domain    The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
+     * @param port      The port of the server.
+     *
+     * @see PlynxProtocol::run, PlynxProtocol::connected
+     */
     void config(const char* auth,
                 const char* domain = PLYNX_DEFAULT_DOMAIN,
                 uint16_t    port   = PLYNX_DEFAULT_PORT)
@@ -152,6 +170,15 @@ public:
         this->conn.begin(domain, port);
     }
 
+    /**
+     * @brief Sets the token and the server, without connecting yet.
+     *
+     * @param auth      The auth token of the board, from the Plynx app.
+     * @param ip        The IP address of the server.
+     * @param port      The port of the server.
+     *
+     * @see PlynxProtocol::run, PlynxProtocol::connected
+     */
     void config(const char* auth,
                 IPAddress   ip,
                 uint16_t    port = PLYNX_DEFAULT_PORT)
@@ -160,6 +187,24 @@ public:
         this->conn.begin(cc3000.IP2U32(ip[0],ip[1],ip[2],ip[3]), port);
     }
 
+    /**
+     * @brief Connects a board with the CC3000 WiFi chip to the WiFi and to the Plynx server, and waits until both are done.
+     *
+     * @param auth      The auth token of the board, from the Plynx app.
+     * @param ssid      The name of the WiFi network.
+     * @param pass      The password of the WiFi network.
+     * @param secmode   The WiFi security, such as WLAN_SEC_WPA2.
+     * @param domain    The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
+     * @param port      The port of the server.
+     *
+     * @par Where to call
+     * In setup(), once. The whole sketch is in examples/Boards_WiFi/CC3000 and examples/Boards_WiFi/TinyDuino_WiFi.
+     *
+     * @warning It waits without a time limit. Turn on PLYNX_PRINT to read
+     * why when setup() does not end.
+     *
+     * @see PlynxProtocol::run, PlynxProtocol::connected
+     */
     void begin( const char* auth,
                 const char* ssid,
                 const char* pass,
@@ -172,6 +217,24 @@ public:
         while(this->connect() != true) {}
     }
 
+    /**
+     * @brief Connects a board with the CC3000 WiFi chip to the WiFi and to a Plynx server given by its IP address, and waits until both are done.
+     *
+     * @param auth      The auth token of the board, from the Plynx app.
+     * @param ssid      The name of the WiFi network.
+     * @param pass      The password of the WiFi network.
+     * @param secmode   The WiFi security, such as WLAN_SEC_WPA2.
+     * @param ip        The IP address of the server.
+     * @param port      The port of the server.
+     *
+     * @par Where to call
+     * In setup(), once. The whole sketch is in examples/Boards_WiFi/CC3000 and examples/Boards_WiFi/TinyDuino_WiFi.
+     *
+     * @warning It waits without a time limit. Turn on PLYNX_PRINT to read
+     * why when setup() does not end.
+     *
+     * @see PlynxProtocol::run, PlynxProtocol::connected
+     */
     void begin( const char* auth,
                 const char* ssid,
                 const char* pass,

@@ -1,0 +1,76 @@
+# Doxyfile for the Plynx Arduino library.
+#
+# Run it from the root of the repository:
+#
+#     doxygen Doxyfile
+#
+# It writes build/doxygen-html (open index.html) and build/doxygen-xml, the
+# machine-readable copy. build/ is ignored by git. Any warning stops the run
+# with an error, so a comment that breaks the convention cannot slip in.
+# The convention itself is in CONTRIBUTING.md.
+
+PROJECT_NAME           = "Plynx"
+PROJECT_NUMBER         = 1.2.0
+PROJECT_BRIEF          = "Control your Arduino, ESP32 or ESP8266 from the Plynx app"
+OUTPUT_DIRECTORY       = build
+HTML_OUTPUT            = doxygen-html
+XML_OUTPUT             = doxygen-xml
+OUTPUT_LANGUAGE        = English
+
+INPUT                  = src
+FILE_PATTERNS          = *.h
+RECURSIVE              = YES
+EXCLUDE                = src/certs
+STRIP_FROM_PATH        = src
+STRIP_FROM_INC_PATH    = src
+
+# Only what carries a comment is published. Internals stay out.
+EXTRACT_ALL            = NO
+EXTRACT_STATIC         = YES
+HIDE_UNDOC_MEMBERS     = YES
+HIDE_UNDOC_CLASSES     = YES
+DISTRIBUTE_GROUP_DOC   = YES
+JAVADOC_AUTOBRIEF      = NO
+MARKDOWN_SUPPORT       = YES
+SORT_MEMBER_DOCS       = NO
+
+# The library reads settings from macros. DOXYGEN unlocks the blocks that exist
+# only to document the macros a sketch defines itself (PLYNX_PRINT and the
+# others). ESP32 and ARDUINO pick the code a typical ESP32 sketch compiles.
+ENABLE_PREPROCESSING   = YES
+MACRO_EXPANSION        = YES
+EXPAND_ONLY_PREDEF     = YES
+PREDEFINED             = DOXYGEN \
+                         ARDUINO=10819 \
+                         ESP32 \
+                         CONFIG_BT_ENABLED \
+                         CONFIG_BLUEDROID_ENABLED \
+                         "PLYNX_UNUSED=" \
+                         "PLYNX_FORCE_INLINE=" \
+                         "PLYNX_DEPRECATED=" \
+                         "PLYNX_NORETURN="
+# CONFIG_BT_* are set by the ESP32 core; PlynxSimpleEsp32_BT.h is empty without them.
+# The timer is written as SimpleTimer and renamed PlynxTimer by a macro.
+EXPAND_AS_DEFINED      = SimpleTimer
+
+ALIASES                = "license=@par License^^" \
+                         "experimental=@xrefitem experimental \"Experimental\" \"Experimental functions\""
+
+# Warnings: none is allowed on what is documented. Undocumented internals are
+# not reported, they are simply left out.
+QUIET                  = YES
+WARNINGS               = YES
+WARN_IF_UNDOCUMENTED   = NO
+WARN_IF_DOC_ERROR      = YES
+WARN_IF_INCOMPLETE_DOC = YES
+WARN_NO_PARAMDOC       = YES
+WARN_AS_ERROR          = FAIL_ON_WARNINGS
+WARN_FORMAT            = "$file:$line: $text"
+
+GENERATE_HTML          = YES
+GENERATE_XML           = YES
+XML_PROGRAMLISTING     = NO
+GENERATE_LATEX         = NO
+SOURCE_BROWSER         = NO
+GENERATE_TREEVIEW      = YES
+HAVE_DOT               = NO

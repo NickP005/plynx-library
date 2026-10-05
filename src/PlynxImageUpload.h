@@ -3,30 +3,19 @@
  * @author     Plynx
  * @license    This project is released under the MIT License (MIT)
  * @date       Aug 2026
- * @brief      Pubblica un'immagine come VALORE di un pin virtuale.
+ * @brief      Publishes a picture as the value of a virtual pin.
  *
- * L'idea, in una riga: **l'immagine è il valore del pin**. Il pin non porta i
- * byte, porta il loro riferimento. Chi scrive un altro valore su quel pin —
- * un'altra foto, un numero, una parola — fa sparire l'immagine, perché è la
- * stessa regola di sempre: l'ultimo scritto vince.
+ * The picture is the value of the pin. The pin carries a reference to the
+ * bytes, and a new value written to the same pin, another picture, a number
+ * or a word, replaces the picture, as for any value.
  *
- * Uso, dentro uno sketch che ha già `auth[]`:
+ * The bytes travel over HTTPS, outside the Plynx connection, which carries
+ * short messages. The server receives them and writes the value of the pin
+ * itself, so the phone sees a pin value like any other.
  *
- *     #include <PlynxImageUpload.h>
- *     ...
- *     int esito = plynxUploadImage(auth, 7, fb->buf, fb->len);
- *     if (esito == 200) { ... }
- *
- * ⚠️ **Non passa dal protocollo Plynx**, e non può: quel filo trasporta
- * messaggi corti, non trecento kilobyte di JPEG. I byte viaggiano su HTTP, e
- * il server — ricevendoli — scrive lui stesso il valore sul pin. Dal telefono
- * non cambia niente: arriva un valore di pin come tutti gli altri.
- *
- * ⚠️ **Il token è la chiave di casa.** È la stessa credenziale con cui si
- * scrivono i pin, e con questa funzione apre anche le foto dell'account: non
- * va pubblicato su GitHub insieme allo sketch. È il motivo per cui questa
- * funzione lo chiede ogni volta invece di tenerselo in una variabile globale —
- * chi lo scrive deve vederlo.
+ * The token is the same key that writes the pins, and with this function it
+ * also opens the pictures of the account. Keep it out of sketches you publish.
+ * The function asks for it at every call, so whoever writes the call sees it.
  */
 
 #ifndef PlynxImageUpload_h
@@ -43,45 +32,98 @@
 #endif
 
 #ifndef PLYNX_IMAGE_HOST
-/** Lo stesso server a cui parla lo sketch. Cambialo se usi un server tuo. */
+/**
+ * @brief The server that receives the pictures, "plynx.cc".
+ *
+ * Change it, above the include, when the board talks to your own server.
+ *
+ * @code
+ * #define PLYNX_IMAGE_HOST "my.server.com"
+ * #include <PlynxSimpleEsp32.h>
+ * #include <PlynxImageUpload.h>
+ * @endcode
+ *
+ * @see PLYNX_IMAGE_PORT
+ */
 #define PLYNX_IMAGE_HOST "plynx.cc"
 #endif
 
 #ifndef PLYNX_IMAGE_PORT
 /**
- * La 9443 e non la 8080: il token e i byte della foto viaggiano cifrati.
- * Sulla porta in chiaro chiunque sia sulla stessa rete — un wifi di un bar, un
- * access point di casa condiviso — leggerebbe il token, e col token si scrivono
- * i pin di tutto il progetto.
+ * @brief The encrypted port that receives the pictures, 9443.
+ *
+ * The token and the bytes of the picture travel encrypted. On a plain port
+ * anyone on the same network, such as the WiFi of a cafe, could read the
+ * token, and the token writes every pin of the project.
+ *
+ * @code
+ * #define PLYNX_IMAGE_PORT 9443
+ * #include <PlynxSimpleEsp32.h>
+ * #include <PlynxImageUpload.h>
+ * @endcode
+ *
+ * @see PLYNX_IMAGE_HOST
  */
 #define PLYNX_IMAGE_PORT 9443
 #endif
 
 #ifndef PLYNX_IMAGE_TIMEOUT_MS
+/**
+ * @brief How long, in milliseconds, plynxUploadImage() waits for the server.
+ * The default is 15000.
+ *
+ * @code
+ * #define PLYNX_IMAGE_TIMEOUT_MS 30000
+ * #include <PlynxSimpleEsp32.h>
+ * #include <PlynxImageUpload.h>
+ * @endcode
+ */
 #define PLYNX_IMAGE_TIMEOUT_MS 15000
 #endif
 
 /**
- * Manda i byte e lascia che il server scriva il pin.
+ * @brief Sends a JPEG or PNG picture to the server, which shows it on a
+ * virtual pin.
  *
- * @param auth   il token della scheda (quello dello sketch)
- * @param vpin   il pin virtuale, es. 7 per V7
- * @param data   i byte dell'immagine (JPEG o PNG)
- * @param len    quanti byte
- * @return       il codice HTTP:
- *               200 fatto ·
- *               401 token sbagliato ·
- *               413 foto troppo grande (max 1 MB) ·
- *               415 non è un JPEG o un PNG (o è troppo corta per esserlo) ·
- *               429 troppo in fretta: fra due foto ci vuole almeno mezzo
- *                   secondo — è il freno che impedisce a una scheda impazzita
- *                   di riempire il server ·
- *               507 spazio esaurito ·
- *               negativo se non si è nemmeno riusciti a parlare col server
+ * Only on ESP32 and ESP8266. The call waits until the server answers.
  *
- * ⚠️ Il valore di ritorno **va guardato**. Una foto rifiutata per quota o per
- * dimensione non lascia nessun segno sulla scheda: senza questo controllo la
- * telecamera continuerebbe a scattare per giorni credendo di pubblicare.
+ * @param auth  The auth token of the board, the one of the sketch.
+ * @param vpin  The virtual pin, 7 for V7.
+ * @param data  The bytes of the picture.
+ * @param len   How many bytes.
+ * @return The answer of the server. 200 means published. 401 means a wrong
+ *         token. 413 means a picture larger than 1 MB. 415 means the bytes
+ *         are not a JPEG or a PNG. 429 means too soon, since the server takes
+ *         at most one picture every half second from a board. 507 means the
+ *         space of the account is full. A negative number means the board
+ *         could not talk to the server at all.
+ *
+ * @par Where to call
+ * Where a picture is ready, for example after a camera shot, never at every
+ * turn of loop().
+ *
+ * @par App widget
+ * Image, set to the same virtual pin.
+ *
+ * @code
+ * #include <PlynxSimpleEsp32.h>
+ * #include <PlynxImageUpload.h>
+ *
+ * char auth[] = "YourAuthToken";
+ *
+ * void publish(const uint8_t* jpeg, size_t length)
+ * {
+ *   int answer = plynxUploadImage(auth, 7, jpeg, length);
+ *   if (answer != 200) {
+ *     Serial.print("Picture refused, code ");
+ *     Serial.println(answer);
+ *   }
+ * }
+ * @endcode
+ *
+ * @warning Check the value it returns. A picture refused for size or for
+ * space leaves no other trace on the board, and a camera that ignores the
+ * answer keeps shooting while nothing is published.
  */
 inline int plynxUploadImage(const char* auth, uint8_t vpin,
                             const uint8_t* data, size_t len) {
@@ -90,10 +132,10 @@ inline int plynxUploadImage(const char* auth, uint8_t vpin,
     }
 
     WiFiClientSecure client;
-    // Il server Plynx usa spesso un certificato autofirmato (installazioni di
-    // casa, Raspberry). Senza questa riga la connessione fallirebbe proprio
-    // dove serve. Cifra il traffico ma non verifica l'identità del server:
-    // per un certificato vero, sostituisci con client.setCACert(...).
+    // A Plynx server often has a self-signed certificate (home installs, a
+    // Raspberry Pi), and without this line the connection would fail exactly
+    // there. The traffic is encrypted but the identity of the server is not
+    // checked. For a real certificate, use client.setCACert(...) instead.
     client.setInsecure();
     client.setTimeout(PLYNX_IMAGE_TIMEOUT_MS / 1000);
 

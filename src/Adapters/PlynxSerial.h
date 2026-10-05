@@ -64,6 +64,36 @@ protected:
     bool    conn;
 };
 
+/**
+ * @brief The Plynx object of a board that talks to the server through a
+ * serial port, such as the USB cable or a Bluetooth serial module.
+ *
+ * `<PlynxSimpleStream.h>` and `<PlynxSimpleSerialBLE.h>` create it as the
+ * global `Plynx`. On the USB cable, the script scripts/plynx-ser.sh, running
+ * on the computer, carries the data between the port and the server.
+ *
+ * @code
+ * #include <PlynxSimpleStream.h>
+ *
+ * char auth[] = "YourAuthToken";
+ *
+ * void setup()
+ * {
+ *   Serial.begin(9600);
+ *   Plynx.begin(Serial, auth);
+ * }
+ *
+ * void loop()
+ * {
+ *   Plynx.run();
+ * }
+ * @endcode
+ *
+ * @warning The port carries the Plynx data, so the sketch cannot print on it.
+ * PLYNX_PRINT has to use another port, or stay off.
+ *
+ * @see begin
+ */
 class PlynxStream
     : public PlynxProtocol<PlynxTransportStream>
 {
@@ -73,6 +103,25 @@ public:
         : Base(transp)
     {}
 
+    /**
+     * @brief Sets the port and the token, without connecting yet.
+     *
+     * @param stream  The serial port that carries the data, such as Serial.
+     * @param auth    The auth token of the board, from the Plynx app.
+     *
+     * @code
+     * #include <PlynxSimpleStream.h>
+     *
+     * void setup()
+     * {
+     *   Serial.begin(9600);
+     *   Plynx.config(Serial, "YourAuthToken");
+     *   Plynx.connect();
+     * }
+     * @endcode
+     *
+     * @see begin
+     */
     void config(Stream&     stream,
                 const char* auth)
     {
@@ -80,6 +129,35 @@ public:
         this->conn.begin(stream);
     }
 
+    /**
+     * @brief Connects to the server through a serial port, and waits until it
+     * is done.
+     *
+     * @param stream  The serial port that carries the data, such as Serial.
+     * @param auth    The auth token of the board, from the Plynx app.
+     *
+     * @par Where to call
+     * In setup(), after the port is started with begin().
+     *
+     * @code
+     * #include <PlynxSimpleStream.h>
+     *
+     * void setup()
+     * {
+     *   Serial.begin(9600);
+     *   Plynx.begin(Serial, "YourAuthToken");
+     * }
+     *
+     * void loop()
+     * {
+     *   Plynx.run();
+     * }
+     * @endcode
+     *
+     * @warning It waits without a time limit, until the other side answers.
+     *
+     * @see config
+     */
     void begin(Stream& stream, const char* auth) {
         config(stream, auth);
         while(this->connect() != true) {}

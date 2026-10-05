@@ -25,6 +25,17 @@
 #include <Plynx/PlynxProtocol.h>
 #include <Adapters/PlynxArduinoClient.h>
 
+/**
+ * @brief The Plynx object of the boards that use the Arduino WiFi libraries,
+ * such as the MKR 1010, the Nano 33 IoT and the Uno WiFi Rev2 (WiFiNINA), the
+ * MKR 1000 and the WiFi Shield 101 (WiFi101).
+ *
+ * The board header, such as `<PlynxSimpleWiFiNINA.h>`, creates it as the
+ * global `Plynx`. The examples in examples/Boards_WiFi show the whole sketch
+ * for each board.
+ *
+ * @see begin, PlynxProtocol::run
+ */
 class PlynxWifiCommon
     : public PlynxProtocol<PlynxArduinoClient>
 {
@@ -34,6 +45,20 @@ public:
         : Base(transp)
     {}
 
+    /**
+     * @brief Joins a WiFi network, trying again every 10 seconds until it
+     * works.
+     *
+     * begin() calls it for you. When the WiFi module does not answer, the
+     * board stops with "WiFi module not found" on the PLYNX_PRINT port.
+     *
+     * @param ssid  The name of the WiFi network.
+     * @param pass  The password, or an empty text for an open network.
+     *
+     * @warning With a wrong name or password it never returns.
+     *
+     * @see begin
+     */
     void connectWiFi(const char* ssid, const char* pass)
     {
         int status = WiFi.status();
@@ -68,6 +93,19 @@ public:
         PLYNX_LOG_IP("IP: ", myip);
     }
 
+    /**
+     * @brief Sets the token and the server, without connecting yet.
+     *
+     * @param auth    The auth token of the board, from the Plynx app.
+     * @param domain  The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
+     * @param port    The port of the server, PLYNX_DEFAULT_PORT by default.
+     *
+     * @par Where to call
+     * In setup(), before Plynx.connect(), when the sketch joins the WiFi by
+     * itself.
+     *
+     * @see PlynxProtocol::connect, begin
+     */
     void config(const char* auth,
                 const char* domain = PLYNX_DEFAULT_DOMAIN,
                 uint16_t    port   = PLYNX_SERVER_PORT)
@@ -76,6 +114,16 @@ public:
         this->conn.begin(domain, port);
     }
 
+    /**
+     * @brief Sets the token and the server by its IP address, without
+     * connecting yet.
+     *
+     * @param auth  The auth token of the board, from the Plynx app.
+     * @param ip    The IP address of the server.
+     * @param port  The port of the server, PLYNX_DEFAULT_PORT by default.
+     *
+     * @see config
+     */
     void config(const char* auth,
                 IPAddress   ip,
                 uint16_t    port = PLYNX_SERVER_PORT)
@@ -84,6 +132,25 @@ public:
         this->conn.begin(ip, port);
     }
 
+    /**
+     * @brief Connects the board to the WiFi and to the Plynx server, and
+     * waits until both are done.
+     *
+     * @param auth    The auth token of the board, from the Plynx app.
+     * @param ssid    The name of the WiFi network.
+     * @param pass    The password of the WiFi network.
+     * @param domain  The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
+     * @param port    The port of the server, PLYNX_DEFAULT_PORT by default.
+     *
+     * @par Where to call
+     * In setup(), once. The sketch for each board is in
+     * examples/Boards_WiFi, for example Arduino_MKR1010.
+     *
+     * @warning It waits without a time limit. With a wrong WiFi password or a
+     * wrong token, setup() never ends. Turn on PLYNX_PRINT to read why.
+     *
+     * @see config, PlynxProtocol::run
+     */
     void begin(const char* auth,
                const char* ssid,
                const char* pass,
@@ -95,6 +162,18 @@ public:
         while(this->connect() != true) {}
     }
 
+    /**
+     * @brief Connects the board to the WiFi and to a Plynx server given by its
+     * IP address, and waits until both are done.
+     *
+     * @param auth  The auth token of the board, from the Plynx app.
+     * @param ssid  The name of the WiFi network.
+     * @param pass  The password of the WiFi network.
+     * @param ip    The IP address of the server.
+     * @param port  The port of the server, PLYNX_DEFAULT_PORT by default.
+     *
+     * @see begin
+     */
     void begin(const char* auth,
                const char* ssid,
                const char* pass,

@@ -28,28 +28,137 @@ struct plynx_tm {
     int16_t         tm_isdst;
 };
 
+/**
+ * @brief A time of day, from 00:00:00 to 23:59:59, kept as the seconds after
+ * midnight.
+ *
+ * TimeInputParam gives the start and the stop in this form.
+ *
+ * @code
+ * void showTime()
+ * {
+ *   PlynxTime t(7, 30, 0);   // 07:30:00
+ *   Serial.print(t.hour());
+ *   Serial.print(":");
+ *   Serial.println(t.minute());
+ * }
+ * @endcode
+ *
+ * @see TimeInputParam
+ */
 class PlynxTime {
 
 public:
+    /** @brief The seconds in a day, 86400. */
     static const uint32_t MAX_TIME = 86400L;
 
     static PlynxTime invalid() { return PlynxTime(); }
 
+    /**
+     * @brief Creates a time that is not set. isValid() is false.
+     *
+     * @code
+     * void unset()
+     * {
+     *   PlynxTime t;
+     *   Serial.println(t.isValid());   // 0
+     * }
+     * @endcode
+     */
     PlynxTime() : mTime(-1) {}
 
     PlynxTime(const PlynxTime& t) : mTime(t.mTime) {}
 
+    /**
+     * @brief Creates a time from the seconds after midnight.
+     * @param seconds  The seconds after midnight. A larger number wraps
+     *                 around the day.
+     *
+     * @code
+     * void noon()
+     * {
+     *   PlynxTime t(12L * 3600);
+     *   Serial.println(t.hour());      // 12
+     * }
+     * @endcode
+     */
     PlynxTime(long seconds) : mTime(seconds % MAX_TIME) {}
 
+    /**
+     * @brief Creates a time from hours, minutes and seconds.
+     * @param hour    From 0 to 23.
+     * @param minute  From 0 to 59.
+     * @param second  From 0 to 59.
+     *
+     * @code
+     * void alarmTime()
+     * {
+     *   PlynxTime alarm(6, 45, 0);
+     * }
+     * @endcode
+     *
+     * @warning On AVR boards, where an `int` has 16 bits, an hour from 10 up
+     * overflows and gives a wrong time. There, pass the seconds as a `long`,
+     * as in `PlynxTime(22L * 3600)`.
+     */
     PlynxTime(int hour, int minute, int second)
     {
         mTime = (hour * 3600 + minute * 60 + second) % MAX_TIME;
     }
 
+    /**
+     * @brief Gives the seconds, from 0 to 59.
+     * @return The seconds.
+     *
+     * @code
+     * void showSecond(PlynxTime t)
+     * {
+     *   Serial.println(t.second());
+     * }
+     * @endcode
+     */
     int second() const { return mTime % 60; }
+
+    /**
+     * @brief Gives the minutes, from 0 to 59.
+     * @return The minutes.
+     *
+     * @code
+     * void showMinute(PlynxTime t)
+     * {
+     *   Serial.println(t.minute());
+     * }
+     * @endcode
+     */
     int minute() const { return (mTime / 60) % 60; }
+
+    /**
+     * @brief Gives the hour, from 0 to 23.
+     * @return The hour.
+     *
+     * @code
+     * void showHour(PlynxTime t)
+     * {
+     *   Serial.println(t.hour());
+     * }
+     * @endcode
+     */
     int hour()   const { return mTime / 3600; }
 
+    /**
+     * @brief Gives the hour on a 12-hour clock, from 1 to 12.
+     * @return The hour, 12 for midnight and for noon.
+     *
+     * @code
+     * void showClock(PlynxTime t)
+     * {
+     *   Serial.print(t.hour12());
+     *   Serial.println(t.isPM() ? " PM" : " AM");
+     * }
+     * @endcode
+     *
+     * @see isAM, isPM
+     */
     int hour12() const {
         int h = hour();
         if (h == 0)
@@ -59,17 +168,80 @@ public:
         return h;
     }
 
+    /**
+     * @brief Tells whether the time is before noon.
+     * @return true from 00:00 to 11:59.
+     *
+     * @code
+     * void greet(PlynxTime t)
+     * {
+     *   Serial.println(t.isAM() ? "Good morning" : "Good afternoon");
+     * }
+     * @endcode
+     */
     bool isAM() const { return !isPM(); }
+
+    /**
+     * @brief Tells whether the time is noon or later.
+     * @return true from 12:00 to 23:59.
+     *
+     * @code
+     * void evening(PlynxTime t)
+     * {
+     *   bool late = t.isPM();
+     * }
+     * @endcode
+     */
     bool isPM() const { return (hour() >= 12); }
 
+    /**
+     * @brief Moves the time forward by a number of seconds, wrapping around
+     * midnight.
+     * @param sec  The seconds to add.
+     *
+     * @code
+     * void later()
+     * {
+     *   PlynxTime t(23L * 3600 + 59 * 60);   // 23:59:00
+     *   t.adjustSeconds(120);                 // 00:01:00
+     * }
+     * @endcode
+     *
+     * @warning A negative number that goes back past midnight gives a wrong
+     * time.
+     */
     void adjustSeconds(int sec) {
         if (isValid()) {
             mTime = (mTime + sec) % MAX_TIME;
         }
     }
 
+    /**
+     * @brief Gives the time as seconds after midnight.
+     * @return From 0 to 86399.
+     *
+     * @code
+     * void compare(PlynxTime start, PlynxTime stop)
+     * {
+     *   long length = stop.getUnixOffset() - start.getUnixOffset();
+     * }
+     * @endcode
+     */
     plynx_time_t getUnixOffset() const { return mTime; }
 
+    /**
+     * @brief Tells whether the time is set.
+     * @return true for a time of day, false for a time that is not set.
+     *
+     * @code
+     * void check(PlynxTime t)
+     * {
+     *   if (t.isValid()) {
+     *     Serial.println(t.hour());
+     *   }
+     * }
+     * @endcode
+     */
     bool isValid()  const { return mTime < MAX_TIME; }
     operator bool() const { return isValid(); }
 
