@@ -740,6 +740,37 @@ static void plynxOtaFlashAbort()
 #endif
 }
 
+/*
+ * ---- the chip the image was built for ----
+ *
+ * An ESP32-family image says in its header which chip it was built for
+ * (esp_image_header_t.chip_id, bytes 12-13: 0 ESP32, 5 C3, 9 S3...). The
+ * bootloader checks it, but only at the very end, when Update.end() fails with
+ * "mismatch chip ID" after the whole flash has been rewritten: measured in
+ * QEMU, an ESP32 image on a C3 downloads all of its ~900 KB first. Here the
+ * first 14 bytes are enough to refuse, before anything is written.
+ *
+ * Collects the head of the image across chunks (a chunk can be shorter than
+ * 14 bytes) and answers false only on a real header that names another chip.
+ */
+#if defined(ESP32) && defined(CONFIG_IDF_FIRMWARE_CHIP_ID)
+#define PLYNX_OTA_CHECKS_CHIP
+static bool plynxOtaHeadChipOk(uint8_t* head, uint32_t at, const uint8_t* d, size_t n)
+{
+    for (size_t k = 0; at + k < 14 && k < n; k++) {
+        head[at + k] = d[k];
+    }
+    if (at >= 14 || at + n < 14) {
+        return true; // already judged, or not all of it yet
+    }
+    if (head[0] != 0xE9) {
+        return true; // not an image header: Update.write() says why
+    }
+    const uint16_t chip = (uint16_t)head[12] | ((uint16_t)head[13] << 8);
+    return chip == (uint16_t)(CONFIG_IDF_FIRMWARE_CHIP_ID);
+}
+#endif
+
 #if !defined(PLYNX_OTA_TRANSPORT_PUSH)
 
 /*
@@ -751,9 +782,14 @@ static void plynxOtaFlashAbort()
 // a blocking Plynx.connect() would spin on the nesting guard): startSession()
 // re-opens the socket and lets the sketch's normal Plynx.run() loop redo the
 // login instead.
-static void plynxOtaFail(WiFiClient& client, const char* msg, bool abortFlash)
+//
+// `code` is the short word the server reads at the next login as "ota-err"
+// (Plynx/PlynxFlashInfo.h): the board does not reboot after a failure, it
+// reconnects, and that login is the first moment it can say what went wrong.
+static void plynxOtaFail(WiFiClient& client, const char* msg, const char* code, bool abortFlash)
 {
     PLYNX_LOG2(PLYNX_F("OTA: failed: "), msg);
+    plynxOtaLastError = code;
     if (abortFlash) {
         plynxOtaFlashAbort();
     }
@@ -801,7 +837,7 @@ static void plynxOtaPerform(const char* url, const char* shaHex, uint32_t declar
 
     WiFiClient client;
     if (!client.connect(host, port)) {
-        plynxOtaFail(client, "connect", false);
+        plynxOtaFail(client, "connect", "conn", false);
         return;
     }
 
@@ -814,12 +850,12 @@ static void plynxOtaPerform(const char* url, const char* shaHex, uint32_t declar
 
     char line[160];
     if (plynxOtaReadLine(client, line, sizeof(line)) < 0) {
-        plynxOtaFail(client, "no response", false);
+        plynxOtaFail(client, "no response", "http", false);
         return;
     }
     const char* sp = strchr(line, ' ');
     if (!sp || atoi(sp + 1) != 200) {
-        plynxOtaFail(client, "http status", false);
+        plynxOtaFail(client, "http status", "http", false);
         return;
     }
 
@@ -827,7 +863,7 @@ static void plynxOtaPerform(const char* url, const char* shaHex, uint32_t declar
     for (;;) {
         const int n = plynxOtaReadLine(client, line, sizeof(line));
         if (n < 0) {
-            plynxOtaFail(client, "headers", false);
+            plynxOtaFail(client, "headers", "http", false);
             return;
         }
         if (n == 0) {
@@ -841,13 +877,13 @@ static void plynxOtaPerform(const char* url, const char* shaHex, uint32_t declar
     }
 
     if (declaredSize && contentLength && declaredSize != contentLength) {
-        plynxOtaFail(client, "size mismatch", false);
+        plynxOtaFail(client, "size mismatch", "size", false);
         return;
     }
     const uint32_t expected = declaredSize ? declaredSize : contentLength;
 
     if (!plynxOtaFlashBegin(expected)) {
-        plynxOtaFail(client, "flash begin (space?)", false);
+        plynxOtaFail(client, "flash begin (space?)", "space", false);
         return;
     }
 
@@ -855,6 +891,9 @@ static void plynxOtaPerform(const char* url, const char* shaHex, uint32_t declar
     sha.init();
 
     uint8_t  buf[PLYNX_OTA_CHUNK];
+#ifdef PLYNX_OTA_CHECKS_CHIP
+    uint8_t  head[14];
+#endif
     uint32_t written  = 0;
     millis_time_t deadline = PlynxMillis() + PLYNX_OTA_STREAM_TIMEOUT_MS;
 
@@ -865,7 +904,7 @@ static void plynxOtaPerform(const char* url, const char* shaHex, uint32_t declar
                 break; // server closed: end of body
             }
             if ((int32_t)(PlynxMillis() - deadline) >= 0) {
-                plynxOtaFail(client, "stream timeout", true);
+                plynxOtaFail(client, "stream timeout", "timeout", true);
                 return;
             }
             PlynxDelay(1);
@@ -882,9 +921,15 @@ static void plynxOtaPerform(const char* url, const char* shaHex, uint32_t declar
         if (n <= 0) {
             continue;
         }
+#ifdef PLYNX_OTA_CHECKS_CHIP
+        if (!plynxOtaHeadChipOk(head, written, buf, (size_t)n)) {
+            plynxOtaFail(client, "image built for another chip", "chip", true);
+            return;
+        }
+#endif
         sha.update(buf, (size_t)n);
         if (Update.write(buf, (size_t)n) != (size_t)n) {
-            plynxOtaFail(client, "flash write", true);
+            plynxOtaFail(client, "flash write", "write", true);
             return;
         }
         written += (uint32_t)n;
@@ -894,19 +939,19 @@ static void plynxOtaPerform(const char* url, const char* shaHex, uint32_t declar
     client.stop();
 
     if ((expected && written != expected) || written == 0) {
-        plynxOtaFail(client, "truncated download", true);
+        plynxOtaFail(client, "truncated download", "trunc", true);
         return;
     }
 
     uint8_t digest[32];
     sha.final(digest);
     if (shaHex && !plynxOtaShaMatches(digest, shaHex)) {
-        plynxOtaFail(client, "sha256 mismatch", true);
+        plynxOtaFail(client, "sha256 mismatch", "sha", true);
         return;
     }
 
     if (!Update.end(expected == 0)) {
-        plynxOtaFail(client, "flash end", false);
+        plynxOtaFail(client, "flash end", "end", false);
         return;
     }
 
@@ -1010,6 +1055,9 @@ struct PlynxOtaPush {
     uint32_t acked;
     char     shaHex[65];
     PlynxOtaSha256 sha;
+#ifdef PLYNX_OTA_CHECKS_CHIP
+    uint8_t  head[14];
+#endif
 };
 
 static PlynxOtaPush& plynxOtaPush()
@@ -1149,6 +1197,12 @@ static void plynxOtaPushData(PlynxParam::iterator it, const PlynxParam& param)
         return;
     }
 
+#ifdef PLYNX_OTA_CHECKS_CHIP
+    if (!plynxOtaHeadChipOk(p.head, p.written, data, n)) {
+        plynxOtaPushFail("image built for another chip");
+        return;
+    }
+#endif
     p.sha.update(data, n);
     if (Update.write((uint8_t*)data, n) != n) {
         plynxOtaPushFail("flash write");

@@ -81,6 +81,37 @@
 
 #endif // PLYNX_INFO_OTA_MAX
 
+/*
+ * ota-err: why the last download OTA failed, said ONCE at the next login.
+ *
+ * After a failed download the board does not reboot: it reconnects to the
+ * server (Plynx/PlynxOta.h, plynxOtaFail). Until 1.3.0 that reconnect said
+ * nothing, so the server could only notice that the build had not changed,
+ * send the same image again, and give up after three attempts with a reason
+ * nobody could act on. Now the login carries a short word: "chip" (the image
+ * is for another chip), "space", "end" (the image did not validate), "sha",
+ * "size", "write", "trunc", "timeout", "http", "conn".
+ *
+ * Read and cleared in one step, so a board that stays up for days does not
+ * repeat a failure that belongs to an update long gone. A server that does not
+ * know the key skips it, like every unknown blnkinf key.
+ *
+ * Only the download handler (WiFi, Ethernet, GSM) sets it: on the push
+ * transport the board is talking to whoever sends the bytes, and tells them
+ * directly ("ota err ...").
+ */
+#if defined(PLYNX_OTA_HAS_DEFAULT) && !defined(PLYNX_OTA_TRANSPORT_PUSH) && !defined(PLYNX_INFO_OTA_ERR)
+static const char* plynxOtaLastError = NULL;
+
+static inline const char* plynxOtaTakeError()
+{
+    const char* e = plynxOtaLastError;
+    plynxOtaLastError = NULL;
+    return e;
+}
+#define PLYNX_INFO_OTA_ERR (plynxOtaTakeError())
+#endif
+
 #endif // ESP32 || ESP8266
 
 #endif

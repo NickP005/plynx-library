@@ -74,6 +74,32 @@
     #elif defined(__AVR_ATtiny4313__)
     #define PLYNX_INFO_CPU      "ATtiny4313"
     #endif
+
+    /******************************************
+     * ESP32 family
+     *
+     * "dev" stays "ESP32" for the whole family (servers and apps of before
+     * 1.3.0 read that word, and changing it would make them refuse updates
+     * to boards that are fine). The chip itself goes in "cpu", spelled the way
+     * ESP-IDF spells its target: "esp32", "esp32c3", "esp32s3", "esp32s2",
+     * "esp32c6"... An image built for one of them does not boot on another,
+     * and before this key the server had no way to tell them apart.
+     *
+     * CONFIG_IDF_TARGET is a string literal in sdkconfig.h on every core that
+     * knows more than one chip (2.x and 3.x). Core 1.0.x only builds for the
+     * classic ESP32 and has no such macro: there the key is simply absent,
+     * which the server already reads as "classic ESP32".
+     */
+    #if !defined(PLYNX_INFO_CPU) && (defined(ARDUINO_ARCH_ESP32) || defined(ESP32))
+        #if defined(__has_include)
+            #if __has_include(<sdkconfig.h>)
+                #include <sdkconfig.h>
+            #endif
+        #endif
+        #if defined(CONFIG_IDF_TARGET)
+        #define PLYNX_INFO_CPU      CONFIG_IDF_TARGET
+        #endif
+    #endif
 #endif
 
 #ifndef PLYNX_INFO_DEVICE
