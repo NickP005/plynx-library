@@ -25,7 +25,7 @@
  * Professional settings
  ***************************************************/
 // Library version.
-#define PLYNX_VERSION        "1.1.0"
+#define PLYNX_VERSION        "1.2.0"
 
 #define PLYNX_NEW_LIBRARY
 
@@ -69,6 +69,29 @@
 #ifndef PLYNX_OTA_RX_BUFFER
 #define PLYNX_OTA_RX_BUFFER \
     (PLYNX_OTA_PUSH_WINDOW + PLYNX_OTA_PUSH_WINDOW / 4 + PLYNX_MAX_READBYTES)
+#endif
+
+// Which ESP32 DevKit the sketch runs on, by the pins on its header: 30 or 38.
+//
+//   #define PLYNX_BOARD_PINS 38
+//   #include <PlynxSimpleEsp32.h>
+//
+// The board then says it in its info block ("pins") at every connect, and the
+// Plynx app draws that pinout and stops asking. The two DevKits carry the same
+// chip, so nothing the board can measure tells them apart: only the sketch
+// knows. Leave it out and the app keeps asking, as before.
+//
+// Only the two real headers are accepted. Any other number stops the build
+// here, because a wrong count would put a pinout on screen that the board in
+// the user's hand does not have.
+#ifdef PLYNX_BOARD_PINS
+    #if PLYNX_BOARD_PINS == 30
+        #define PLYNX_INFO_PINS "30"
+    #elif PLYNX_BOARD_PINS == 38
+        #define PLYNX_INFO_PINS "38"
+    #else
+        #error "PLYNX_BOARD_PINS must be 30 or 38 (the pins on your ESP32 DevKit header)"
+    #endif
 #endif
 
 // Uncomment to disable built-in analog and digital operations.

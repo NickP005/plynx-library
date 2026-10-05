@@ -35,6 +35,9 @@
 /* Fill-in your Template ID (legacy: not needed for Plynx) */
 //#define PLYNX_TEMPLATE_ID   "YourTemplateID"
 
+/* The pins on your DevKit header, 30 or 38: the Plynx app shows that pinout */
+//#define PLYNX_BOARD_PINS 38
+
 
 #include <WiFi.h>
 #include <WiFiClient.h>

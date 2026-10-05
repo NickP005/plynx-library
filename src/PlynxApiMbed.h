@@ -37,6 +37,12 @@ void PlynxApi<Proto>::sendInfo()
 #ifdef PLYNX_FIRMWARE_VERSION
         PLYNX_PARAM_KV("fw"     , PLYNX_FIRMWARE_VERSION)
 #endif
+#ifdef PLYNX_INFO_PINS
+        // "pins": the header this sketch was written for (PLYNX_BOARD_PINS,
+        // Plynx/PlynxConfig.h). Static on purpose: it is a fact of the build,
+        // and here it costs no byte of the dynamic buffer below.
+        PLYNX_PARAM_KV("pins"   , PLYNX_INFO_PINS)
+#endif
         PLYNX_PARAM_KV("build"  , __DATE__ " " __TIME__)
         "\0"
     ;
