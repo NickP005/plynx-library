@@ -10,7 +10,7 @@
 # The convention itself is in CONTRIBUTING.md.
 
 PROJECT_NAME           = "Plynx"
-PROJECT_NUMBER         = 1.2.0
+PROJECT_NUMBER         = 1.4.0
 PROJECT_BRIEF          = "Control your Arduino, ESP32 or ESP8266 from the Plynx app"
 OUTPUT_DIRECTORY       = build
 HTML_OUTPUT            = doxygen-html
