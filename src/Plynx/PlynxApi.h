@@ -63,8 +63,10 @@ public:
     /**
      * @brief Shows a value in the app, on every widget set to that virtual pin.
      *
-     * Numbers, text and `String` all work. A widget that takes more than one
-     * value, like the RGB Picker, the Map or the Table, gets them all in one call.
+     * A Value Display, a Gauge, a Chart or a Level Display shows it, a Button
+     * or a Slider moves to it. Numbers, text and `String` all work. A widget
+     * that takes more than one value, like the RGB Picker, the Map or the
+     * Table, gets them all in one call.
      *
      * @param pin     The virtual pin, such as V1.
      * @param values  The value, or several values separated by commas.
