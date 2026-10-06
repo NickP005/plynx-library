@@ -181,6 +181,19 @@ the variant. Without the define the app asks, as before. Any value other
 than 30 or 38 stops the build with an error. The sketches the app writes for
 an ESP32 already carry this line once you have picked your variant in the app.
 
+## ESP32-C3 and ESP32-S3
+
+The same `<PlynxSimpleEsp32.h>` sketch builds for the original ESP32, the
+ESP32-C3 and the ESP32-S3. Since 1.3.0 the board tells the server which of
+them it is, at every connect, so an update built for another chip is refused
+before it is sent. If one reaches the board anyway, the board checks the first
+bytes of the image, stops the download there and reports why at the next
+connect, instead of rewriting the whole flash for nothing.
+
+Classic Bluetooth (`<PlynxSimpleEsp32_BT.h>`) exists only on the original
+ESP32. On a C3 or an S3 that include stops the build with a message pointing
+to `<PlynxSimpleEsp32_NimBLE.h>`, which speaks Bluetooth Low Energy.
+
 ## Compatibility
 
 Plynx speaks the classic Blynk Legacy protocol, so it also works with Blynk-legacy servers and existing sketches. You can point the same firmware at either a Plynx server or a Blynk-legacy server by changing the host in `begin()`.

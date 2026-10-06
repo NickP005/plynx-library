@@ -10,6 +10,19 @@
 
 #include "sdkconfig.h"
 
+// Classic Bluetooth (SPP) lives only on the original ESP32. The C3, S3, C6
+// and H2 have Bluetooth Low Energy and nothing else, and before this check a
+// sketch for them failed far away with "'Plynx' was not declared in this
+// scope", which says nothing about the real reason.
+#if defined(__has_include)
+#if __has_include("soc/soc_caps.h")
+#include "soc/soc_caps.h"
+#if !defined(SOC_BT_CLASSIC_SUPPORTED) || !SOC_BT_CLASSIC_SUPPORTED
+#error "PlynxSimpleEsp32_BT.h needs Classic Bluetooth, which only the original ESP32 has. This chip (ESP32-C3, S3, C6...) speaks Bluetooth Low Energy, so include <PlynxSimpleEsp32_NimBLE.h> instead."
+#endif
+#endif
+#endif
+
 #if defined(CONFIG_BT_ENABLED) && defined(CONFIG_BLUEDROID_ENABLED)
 
 #ifdef ARDUINO_ARCH_ESP32
@@ -305,5 +318,7 @@ void PlynxTransportEsp32_BT::onDisconnect() {
 
 #include <PlynxWidgets.h>
 
+#else
+#error "PlynxSimpleEsp32_BT.h needs Bluetooth with the Bluedroid stack, and this core is built without it. ESP32 cores 3.x turn it on by default, so check the board settings or use <PlynxSimpleEsp32_NimBLE.h>."
 #endif
 #endif

@@ -121,6 +121,18 @@ void PlynxApi<Proto>::sendInfo()
 #ifdef PLYNX_INFO_FLASH_SKETCH
     profile_dyn.add_key("sk-size", (unsigned long)(PLYNX_INFO_FLASH_SKETCH));
 #endif
+#ifdef PLYNX_INFO_OTA_ERR
+    // Why the last OTA download failed (Plynx/PlynxFlashInfo.h), once. Only
+    // when key and value fit WHOLE: add_key() would write the key and drop
+    // the value, and a key without its value shifts every pair after it.
+    {
+        const char* otaErr = PLYNX_INFO_OTA_ERR;
+        if (otaErr && *otaErr
+                && profile_dyn.getLength() + sizeof("ota-err") + strlen(otaErr) + 1 <= sizeof(mem_dyn)) {
+            profile_dyn.add_key("ota-err", otaErr);
+        }
+    }
+#endif
 
 #ifdef PLYNX_HAS_PROGMEM
     char mem[profile_len];
