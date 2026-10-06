@@ -64,6 +64,7 @@ PLYNX_OBJECT = re.compile(
     r"PlynxUserDefined|PlynxParticle)$")
 
 SKIP = {"parameterlist", "simplesect", "programlisting", "xrefsect"}
+DASHES = {"ndash": "\u2013", "mdash": "\u2014"}
 
 
 def text_of(el, skip=SKIP) -> str:
@@ -79,6 +80,9 @@ def text_of(el, skip=SKIP) -> str:
             return
         if e.tag == "sp":
             out.append(" ")
+        elif e.tag in DASHES:
+            # «2000--2099» in a comment: Doxygen writes <ndash/>, a dash to keep
+            out.append(DASHES[e.tag])
         elif e.tag == "linebreak":
             out.append("\n")
         elif e.text:
@@ -180,6 +184,9 @@ def object_definition(m, owner) -> bool:
     `PlynxWifi Plynx(_plynxTransport);`. Doxygen reads it as a function whose
     parameters have a type and no name."""
     params = m.findall("param")
+    # f(void) is a function with no parameters, not an object
+    if len(params) == 1 and (params[0].findtext("type") or "").strip() == "void":
+        return False
     return (owner is None and m.attrib["kind"] == "function" and bool(params)
             and all(p.find("declname") is None for p in params))
 
