@@ -113,8 +113,8 @@ public:
      *
      * @return true when the board is connected and logged in to the server.
      *
-     * For example, an LED that shows the link, or skipping work that needs the
-     * connection.
+     * Call it anywhere, for example for an LED that shows the link, or to skip work
+     * that needs the connection.
      *
      * @code
      * PlynxTimer timer;
@@ -265,12 +265,13 @@ public:
 
     /**
      * @brief Keeps the board online and runs your PLYNX_WRITE() code when the app
-     * sends a value. Call it at every turn of loop().
+     * sends a value.
      *
      * Each call reads the messages that arrived, runs the matching
      * PLYNX_WRITE() and PLYNX_READ() handlers, sends the heartbeat that keeps
      * the connection open and, when the connection dropped, tries again every
-     * 5 seconds. Handlers run only inside this call.
+     * 5 seconds. Handlers run only inside this call. Call it at every turn of
+     * loop(), and nowhere else.
      *
      * @param avail  true when the sketch already knows that data is waiting.
      *               Leave it out.

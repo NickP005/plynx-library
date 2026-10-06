@@ -68,6 +68,10 @@ public:
      * that takes more than one value, like the RGB Picker, the Map or the
      * Table, gets them all in one call.
      *
+     * Call it from a PlynxTimer, inside PLYNX_READ() to answer the app, inside
+     * PLYNX_WRITE() to confirm a value, or in PLYNX_CONNECTED() to send the state
+     * after a reconnect. Never at every turn of loop().
+     *
      * @param pin     The virtual pin, such as V1.
      * @param values  The value, or several values separated by commas.
      *
@@ -118,7 +122,7 @@ public:
      * @brief Sends bytes to a virtual pin exactly as they are.
      *
      * A zero byte splits them into separate values in the app. WidgetTerminal sends
-     * its text this way.
+     * its text this way. Call it from the same places as virtualWrite().
      *
      * @param pin   The virtual pin, such as V1.
      * @param buff  The bytes to send.
@@ -148,7 +152,8 @@ public:
      * @brief Shows in the app a list of values built while the sketch runs.
      *
      * Each add() on the PlynxParam is one value in the app, for example one
-     * reading for each sensor found on a bus.
+     * reading for each sensor found on a bus. Call it from the same places as
+     * virtualWrite().
      *
      * @param pin    The virtual pin, such as V1.
      * @param param  The values, added with PlynxParam::add().
@@ -176,6 +181,8 @@ public:
     /**
      * @brief Shows in the app a list of values kept in heap memory.
      *
+     * Call it from the same places as virtualWrite().
+     *
      * @param pin    The virtual pin, such as V1.
      * @param param  The values, added with PlynxParam::add().
      *
@@ -198,8 +205,8 @@ public:
     /**
      * @brief Runs your PLYNX_WRITE() code for a pin with a value you choose.
      *
-     * The app does not see the value. In setup() it applies a starting value with
-     * the same code that handles the app.
+     * The app does not see the value. Call it anywhere, for example in setup() to
+     * apply a starting value with the same code that handles the app.
      *
      * @param pin    The virtual pin.
      * @param param  The value your code reads as `param`.
@@ -232,6 +239,9 @@ public:
 
     /**
      * @brief Runs your PLYNX_READ() code for a pin, so its widget gets a fresh value.
+     *
+     * Call it anywhere, for example from a timer, to push the value with the same
+     * code that answers the app.
      *
      * @param pin  The virtual pin.
      *
@@ -498,6 +508,8 @@ public:
      * @param pin       The virtual pin of the widget.
      * @param property  The property name, from the list above.
      * @param values    The new value.
+     *
+     * Call it in PLYNX_CONNECTED() to set the look once, or when something changes.
      *
      * @code
      * void showAlarm(bool on)

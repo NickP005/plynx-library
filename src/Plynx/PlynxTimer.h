@@ -120,10 +120,10 @@ public:
     void init();
 
     /**
-     * @brief Calls the functions whose time has come. Put it in loop(), next to
-     * Plynx.run().
+     * @brief Calls the functions whose time has come.
      *
-     * A timer late by several intervals runs once and skips the missed runs.
+     * Call it in loop(), at every turn, next to Plynx.run(). A timer late by
+     * several intervals runs once and skips the missed runs.
      *
      * @code
      * PlynxTimer timer;
@@ -140,8 +140,9 @@ public:
     void run();
 
     /**
-     * @brief Calls a function every `d` milliseconds, forever. Set it once in
-     * setup().
+     * @brief Calls a function every `d` milliseconds, forever.
+     *
+     * Call it in setup(), once for each repeating job.
      *
      * @param d  The interval in milliseconds. On AVR boards write 60 * 1000L,
      *           because 60 * 1000 overflows an `int` there.
@@ -219,7 +220,8 @@ public:
      * @brief Calls a function once, `d` milliseconds from now. For example, turns a
      * relay off a few seconds after the app turned it on.
      *
-     * The timer frees its place after the call.
+     * Call it wherever something has to happen later, for example inside
+     * PLYNX_WRITE(). The timer frees its place after the call.
      *
      * @param d  The wait in milliseconds.
      * @param f  The function to call, with no parameters.

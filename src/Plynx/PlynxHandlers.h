@@ -191,7 +191,7 @@
  * PLYNX_WRITE() of their own.
  *
  * `request.pin` is the pin and `param` is the value. Without it those values
- * are lost.
+ * are lost. Write it outside setup() and loop(), once.
  *
  * @code
  * PLYNX_WRITE_DEFAULT()
@@ -211,7 +211,8 @@
  * @brief Your answer when the app asks for the value of a pin that has no
  * PLYNX_READ() of its own.
  *
- * `request.pin` is the pin. Answer with Plynx.virtualWrite() on that pin.
+ * `request.pin` is the pin. Answer with Plynx.virtualWrite() on that pin. Write
+ * it outside setup() and loop(), once.
  *
  * @code
  * PLYNX_READ_DEFAULT()
@@ -357,7 +358,7 @@
  * after every reconnect.
  *
  * Here the board gets back the values of the app with Plynx.syncAll() and
- * sends its own state.
+ * sends its own state. Write it outside setup() and loop(), once.
  *
  * @code
  * PLYNX_CONNECTED()
@@ -378,6 +379,8 @@
  * @brief Your code that runs when the board loses the connection. The board
  * then reconnects by itself.
  *
+ * Write it outside setup() and loop(), once.
+ *
  * @code
  * PLYNX_DISCONNECTED()
  * {
@@ -397,6 +400,8 @@
 /**
  * @brief An `int` variable that the app can set and read on a virtual pin,
  * with no other code.
+ *
+ * Write it at the top of the sketch, outside any function.
  *
  * @param name  The name of the variable.
  * @param pin   The virtual pin, such as V1.
@@ -535,7 +540,7 @@ PLYNX_WRITE(InternalPinDBG);
  *
  * It runs only in a project with the `isAppConnectedOn` setting on, and the
  * Plynx app has no switch for it yet, so in a project made in the app it does not
- * run.
+ * run. Write it outside setup() and loop(), once.
  *
  * @code
  * bool someoneIsWatching = false;
@@ -558,6 +563,8 @@ PLYNX_WRITE(InternalPinDBG);
 /**
  * @brief Your code that runs when the app closes the project. Like
  * PLYNX_APP_CONNECTED(), only with `isAppConnectedOn` on.
+ *
+ * Write it outside setup() and loop(), once.
  *
  * @code
  * PLYNX_APP_DISCONNECTED()
