@@ -13,6 +13,13 @@ a parameter without @param, or a function that returns a value without
 @return. Doxygen itself only catches a wrong @param, or one missing among
 others, unless it is told to warn about every undocumented internal too.
 
+--check also fails when a documentation comment in the headers does not
+become an entry. That happens to a declaration under an #if that the
+PREDEFINED of the Doxyfile leaves off, and to a second class with the same
+name as another one, which Doxygen merges into the first. The headers are
+read from the INPUT of the Doxyfile that wrote the XML, next to the folder
+(build/doxygen-xml sits in the repository, so ../../src), or from --src DIR.
+
 Each entry keeps the sections of the comment apart, so a reader can show them
 in its own layout:
 
@@ -203,9 +210,87 @@ def missing(m, s) -> list[str]:
     return out
 
 
+# Comments that document no declaration: the file header, the opening and
+# closing of a member group, and pages.
+NOT_A_DECLARATION = re.compile(r"@(file|mainpage|page|defgroup|addtogroup|cond|endcond)\b")
+
+
+def doc_comments(src: pathlib.Path, excluded: list, patterns: list):
+    """Every documentation comment of the headers: (file relative to src,
+    line of the comment, line of the declaration under it). A trailing
+    comment (///<, /**<) belongs to the line it is on and is not listed."""
+    found = []
+    for path in sorted(src.rglob("*")):
+        if not path.is_file() or not any(path.match(p) for p in patterns):
+            continue
+        if any(path == x or x in path.parents for x in excluded):
+            continue
+        rel = path.relative_to(src).as_posix()
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        i = 0
+        while i < len(lines):
+            s = lines[i].strip()
+            start = i
+            # /*** is a banner, a plain comment for Doxygen (JAVADOC_BANNER = NO)
+            if (s.startswith("/**") or s.startswith("/*!")) and not s.startswith("/**/") \
+                    and not s.startswith("/***") and not s[3:].startswith("<"):
+                text = []
+                while True:
+                    text.append(lines[i])
+                    if "*/" in lines[i] and (i > start or lines[i].find("*/") > lines[i].find("/*") + 2):
+                        break
+                    i += 1
+                    if i >= len(lines):
+                        break
+            elif (s.startswith("///") and not s.startswith("///<") and not s.startswith("////")) \
+                    or (s.startswith("//!") and not s.startswith("//!<")):
+                text = []
+                while i < len(lines) and (lines[i].strip().startswith("///") or lines[i].strip().startswith("//!")):
+                    text.append(lines[i])
+                    i += 1
+                i -= 1
+            else:
+                i += 1
+                continue
+            body = "\n".join(text)
+            core = re.sub(r"[/*!\s]", "", body)
+            i += 1
+            if NOT_A_DECLARATION.search(body) or core in ("@{", "@}") \
+                    or (core.startswith("@name") and core.endswith("@{")) or not core:
+                continue
+            # the declaration: the next line that is code, or a #define
+            j = i
+            while j < len(lines):
+                t = lines[j].strip()
+                if t and not t.startswith("//") and (not t.startswith("#") or re.match(r"#\s*define\b", t)):
+                    break
+                j += 1
+            if j < len(lines):
+                found.append((rel, start + 1, j + 1))
+    return found
+
+
+def option(doxyfile: pathlib.Path, name: str) -> list:
+    if not doxyfile.is_file():
+        return []
+    for opt in ET.parse(doxyfile).getroot().iter("option"):
+        if opt.attrib.get("id") == name:
+            return [v.text or "" for v in opt.iter("value") if (v.text or "").strip()]
+    return []
+
+
 def main() -> int:
-    args = [a for a in sys.argv[1:] if a != "--check"]
-    check = "--check" in sys.argv[1:]
+    argv = sys.argv[1:]
+    src_arg = None
+    if "--src" in argv:
+        k = argv.index("--src")
+        if k + 1 >= len(argv):
+            print(__doc__, file=sys.stderr)
+            return 2
+        src_arg = pathlib.Path(argv[k + 1])
+        argv = argv[:k] + argv[k + 2:]
+    args = [a for a in argv if a != "--check"]
+    check = "--check" in argv
     if len(args) != 1:
         print(__doc__, file=sys.stderr)
         return 2
@@ -274,6 +359,26 @@ def main() -> int:
                     incomplete.append(f"{e['file']}:{e['line']}: {e['qualified']} has no {what}")
 
     if check:
+        # every documentation comment of the headers has to become an entry
+        root = folder.resolve().parent.parent
+        inputs = option(doxyfile, "INPUT") or ["src"]
+        src = src_arg or (root / inputs[0])
+        if not src.is_dir():
+            print(f"BLIND: no headers in {src}, give them with --src DIR", file=sys.stderr)
+            return 2
+        excluded = [(root / x).resolve() for x in option(doxyfile, "EXCLUDE")]
+        patterns = option(doxyfile, "FILE_PATTERNS") or ["*.h"]
+        lines = {}
+        for e in entries:
+            lines.setdefault(e["file"], set()).add(e["line"])
+        comments = doc_comments(src.resolve(), excluded, patterns)
+        if not comments:
+            print(f"BLIND: no documentation comment found in {src}", file=sys.stderr)
+            return 2
+        for rel, at, decl in comments:
+            if not any(decl <= n <= decl + 4 for n in lines.get(rel, ())):
+                incomplete.append(f"{rel}:{at}: a documentation comment that is not an entry "
+                                  f"(the declaration on line {decl})")
         for row in sorted(set(incomplete)):
             print(row)
         for b in broken:

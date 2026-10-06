@@ -599,8 +599,11 @@ public:
      * }
      * @endcode
      *
-     * @warning A number added to a full buffer can write past its end. Size
-     * the buffer for everything the list will hold.
+     * @warning Size the buffer for everything the list will hold, each value
+     * plus 1 byte. On AVR boards such as the Uno and the Mega a number that
+     * does not fit is left out. On the other boards, ESP32 and ESP8266 among
+     * them, a number that does not fit is cut, and the next number added
+     * writes past the end of the buffer and corrupts the memory of the board.
      *
      * @see PlynxApi::virtualWrite
      */

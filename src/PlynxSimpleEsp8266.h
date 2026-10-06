@@ -49,32 +49,9 @@
 #include <Plynx/PlynxProvision.h>
 #endif
 
-/**
- * @brief The Plynx object of an ESP8266 on WiFi, created by
- * `<PlynxSimpleEsp8266.h>` as the global `Plynx`.
- *
- * It joins the WiFi, connects to the server and keeps the connection alive.
- * With no token in the code, begin() opens a setup hotspot that the Plynx app
- * uses to configure the board. It also receives updates over the air.
- *
- * @code
- * #include <PlynxSimpleEsp8266.h>
- *
- * char auth[] = "YourAuthToken";   // from the Plynx app
- *
- * void setup()
- * {
- *   Plynx.begin(auth, "YourWiFiName", "YourWiFiPassword");
- * }
- *
- * void loop()
- * {
- *   Plynx.run();
- * }
- * @endcode
- *
- * @see begin, PlynxProtocol::run, PlynxApi::virtualWrite
- */
+// The PlynxWifi of the ESP8266. Doxygen keeps one class for each name, so the
+// documentation of this class is the one of the ESP32 version, in
+// PlynxSimpleEsp32.h, which describes both boards.
 class PlynxWifi
     : public PlynxProtocol<PlynxArduinoClient>
 {

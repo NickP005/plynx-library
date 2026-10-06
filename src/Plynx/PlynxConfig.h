@@ -183,7 +183,9 @@
  *
  * virtualWrite(), setProperty() and logEvent() build their message in a
  * buffer of this size, on the stack. A text value that does not fit is left
- * out of the message.
+ * out of the message. A number that does not fit is left out on AVR boards,
+ * and on the other boards, ESP32 and ESP8266 among them, it arrives cut and
+ * the next number writes past the end of the buffer.
  *
  * @par Where to call
  * Before the board header.

@@ -6,7 +6,9 @@ The API is documented with Doxygen comments in the headers under `src/`.
   `build/doxygen-html` (open `index.html`) and `build/doxygen-xml`.
 - `python3 extras/docs/doc_index.py --check build/doxygen-xml` names every
   documented function or macro that leaves a parameter without `@param` or a
-  returned value without `@return`. Without `--check` it writes the whole
+  returned value without `@return`, and every documentation comment that does
+  not become an entry (a declaration under an `#if` that `PREDEFINED` leaves
+  off, or a second class with the name of another one). Without `--check` it writes the whole
   documentation as JSON, one entry per symbol, for the Plynx server and app.
 - `python3 extras/docs/check_doc_examples.py` compiles every example written
   in those comments with arduino-cli, for ESP32 and AVR (and ESP8266 where an

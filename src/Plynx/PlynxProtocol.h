@@ -281,8 +281,12 @@ public:
      *
      * @param avail  true when the sketch already knows that data is waiting.
      *               Leave it out.
-     * @return false when the board is offline, after disconnect(), or when the
-     *         connection dropped during this call. true otherwise.
+     * @return false in the call where the connection drops, an attempt to
+     *         connect fails, or the server refuses or does not answer the
+     *         login, and in every call after disconnect(). true in all other
+     *         calls, even while the board is offline waiting for its next
+     *         attempt and after the server refused the token. To know whether
+     *         the board is online, call connected().
      *
      * @par Where to call
      * In loop(), at every turn, and nowhere else.

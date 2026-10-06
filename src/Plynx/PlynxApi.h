@@ -119,7 +119,15 @@ public:
      * timer, or only when the value changes.
      *
      * @warning The whole message has to fit in PLYNX_MAX_SENDBYTES (128 bytes
-     * by default). A text value that does not fit is left out of the message.
+     * by default). It holds 3 bytes for the command, the pin number plus 1
+     * byte, and each value plus 1 byte. A text value that does not fit is left
+     * out of the message. On AVR boards such as the Uno and the Mega a number
+     * that does not fit is left out too. On the other boards, ESP32 and
+     * ESP8266 among them, a number that does not fit arrives cut, bytes from
+     * after the buffer go out with the message, and a number added after it
+     * writes past the end of the buffer and corrupts the memory of the board.
+     * Keep the texts short, or define a larger PLYNX_MAX_SENDBYTES before the
+     * board header.
      *
      * @see PlynxTimer::setInterval, PLYNX_READ, syncVirtual, PLYNX_MSG_LIMIT
      */
@@ -611,6 +619,14 @@ public:
      * @warning The server refuses an empty value and a name it does not know.
      * Its answer is an error code that the library does not pass on, so the
      * sketch is not told. Check the name in the list above.
+     *
+     * @warning The whole message has to fit in PLYNX_MAX_SENDBYTES (128 bytes
+     * by default). It holds the pin number, the property name and each value,
+     * each plus 1 byte. A text that does not fit is left out. On AVR boards
+     * such as the Uno and the Mega a number that does not fit is left out too.
+     * On the other boards, ESP32 and ESP8266 among them, a number that does
+     * not fit arrives cut, and a number added after it writes past the end of
+     * the buffer and corrupts the memory of the board.
      *
      * @see WidgetLED, PlynxWidgetBase::setLabel, PlynxWidgetBase::setColor
      */

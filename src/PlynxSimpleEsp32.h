@@ -45,12 +45,16 @@
 #endif
 
 /**
- * @brief The Plynx object of an ESP32 on WiFi, created by
- * `<PlynxSimpleEsp32.h>` as the global `Plynx`.
+ * @brief The Plynx object of an ESP32 or an ESP8266 on WiFi, created by
+ * `<PlynxSimpleEsp32.h>` or `<PlynxSimpleEsp8266.h>` as the global `Plynx`.
  *
  * It joins the WiFi, connects to the server and keeps the connection alive.
  * With no token in the code, begin() opens a setup hotspot that the Plynx app
- * uses to configure the board. It also receives updates over the air and undoes a bad one by itself.
+ * uses to configure the board. It also receives updates over the air, and an
+ * ESP32 undoes a bad one by itself.
+ *
+ * Each of the two headers declares its own class with this name and the same
+ * functions, one for each board.
  *
  * @code
  * #include <PlynxSimpleEsp32.h>

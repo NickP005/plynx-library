@@ -148,6 +148,13 @@ It names every documented public function or macro that leaves a parameter
 without `@param`, or a returned value without `@return`, and then exits
 with 1. `make docs` runs Doxygen and this check together.
 
+It also names every documentation comment that does not become an entry.
+Doxygen reads only the `#if` branches that `PREDEFINED` in the `Doxyfile`
+turns on, so a function under a setting such as `PLYNX_EXPERIMENTAL` needs
+that setting in `PREDEFINED`. Two classes with the same name in two headers
+(`PlynxWifi` of the ESP32 and of the ESP8266) become one class in Doxygen,
+so only one of them carries the documentation comment, written for both.
+
 The same script, without `--check`, writes the documentation as one JSON
 file, one entry per symbol, with the sections of each comment kept apart.
 The Plynx server reads that file to show the documentation in the app.

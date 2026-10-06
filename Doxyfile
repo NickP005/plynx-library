@@ -37,6 +37,9 @@ SORT_MEMBER_DOCS       = NO
 # The library reads settings from macros. DOXYGEN unlocks the blocks that exist
 # only to document the macros a sketch defines itself (PLYNX_PRINT and the
 # others). ESP32 and ARDUINO pick the code a typical ESP32 sketch compiles.
+# PLYNX_EXPERIMENTAL and PLYNX_HAS_PROGMEM let in Plynx.delay(), Plynx.refresh()
+# and PlynxParam::add(F("...")), which a sketch reaches with the setting or on
+# an AVR board. extras/docs/doc_index.py --check fails on a comment left out.
 ENABLE_PREPROCESSING   = YES
 MACRO_EXPANSION        = YES
 EXPAND_ONLY_PREDEF     = YES
@@ -45,6 +48,8 @@ PREDEFINED             = DOXYGEN \
                          ESP32 \
                          CONFIG_BT_ENABLED \
                          CONFIG_BLUEDROID_ENABLED \
+                         PLYNX_EXPERIMENTAL \
+                         PLYNX_HAS_PROGMEM \
                          "PLYNX_UNUSED=" \
                          "PLYNX_FORCE_INLINE=" \
                          "PLYNX_DEPRECATED=" \
