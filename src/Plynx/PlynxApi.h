@@ -43,14 +43,10 @@
 #endif
 
 /**
- * @brief The part of the Plynx object that sends values, syncs pins and talks
- * to the app.
+ * @brief The functions you call on the `Plynx` object to talk to the app.
  *
- * A sketch never creates this class. The board header (for example
- * `<PlynxSimpleEsp32.h>`) creates one global object called `Plynx`, and the
- * sketch calls these functions on it, as in `Plynx.virtualWrite(V5, 42)`.
- * Connecting (`begin`, `connect`, `run`) lives in PlynxProtocol and in the
- * board class.
+ * The board header creates the `Plynx` object, so the sketch writes
+ * `Plynx.virtualWrite(V5, 42)` directly.
  *
  * @see PlynxProtocol, PLYNX_WRITE, PLYNX_READ
  */
@@ -65,36 +61,20 @@ public:
     // are defined, in Plynx/PlynxProtocol.h.
 
     /**
-     * @brief Sends one or more values from the board to a virtual pin in the app.
+     * @brief Shows a value in the app, on every widget set to that virtual pin.
      *
-     * The values travel to the server, which keeps them as the current value of
-     * the pin and forwards them to every phone that shows the project. Numbers,
-     * text, `String` and `F("...")` text are accepted. With more than one value
-     * the widget receives them all, in order, which is what an RGB Picker, a Map
-     * or a Table expect.
+     * Numbers, text and `String` all work. A widget that takes more than one
+     * value, like the RGB Picker, the Map or the Table, gets them all in one call.
      *
-     * Numbers become text on the board. A `float` keeps 3 decimals and a
-     * `double` keeps 7.
-     *
-     * @param pin     The virtual pin, written V0, V1, V2 and so on.
-     * @param values  One or more values to send, separated by commas.
-     *
-     * @par Where to call
-     * In a function run by a PlynxTimer, inside PLYNX_READ() to answer the app,
-     * inside PLYNX_WRITE() to confirm a value, or in PLYNX_CONNECTED() to send
-     * the current state after a reconnect.
-     *
-     * @par App widget
-     * Every widget set to that virtual pin. A Value Display, a Gauge, a Chart
-     * or a Level Display show the value, a Button or a Slider move to it.
+     * @param pin     The virtual pin, such as V1.
+     * @param values  The value, or several values separated by commas.
      *
      * @code
      * PlynxTimer timer;
      *
      * void sendTemperature()
      * {
-     *   float celsius = analogRead(A0) * 0.1;   // replace with your sensor
-     *   Plynx.virtualWrite(V5, celsius);
+     *   Plynx.virtualWrite(V5, analogRead(A0) * 0.1);
      * }
      *
      * void setup()
@@ -110,26 +90,17 @@ public:
      * }
      * @endcode
      *
-     * @note While the board is offline the call does nothing and the value is
-     * lost. Send the values that matter again in PLYNX_CONNECTED().
+     * @note While the board is offline the value is lost. Send it again in
+     * PLYNX_CONNECTED().
      *
-     * @warning Calling it at every turn of loop() floods the connection. The
-     * library spaces messages out to PLYNX_MSG_LIMIT per second (15 by default)
-     * by waiting inside the call, so the whole loop() slows down. Send from a
-     * timer, or only when the value changes.
+     * @warning Send from a timer, or when the value changes. Called at every turn
+     * of loop() it slows the whole board down to 15 messages a second.
      *
-     * @warning The whole message has to fit in PLYNX_MAX_SENDBYTES (128 bytes
-     * by default). It holds 3 bytes for the command, the pin number plus 1
-     * byte, and each value plus 1 byte. A text value that does not fit is left
-     * out of the message. On AVR boards such as the Uno and the Mega a number
-     * that does not fit is left out too. On the other boards, ESP32 and
-     * ESP8266 among them, a number that does not fit arrives cut, bytes from
-     * after the buffer go out with the message, and a number added after it
-     * writes past the end of the buffer and corrupts the memory of the board.
-     * Keep the texts short, or define a larger PLYNX_MAX_SENDBYTES before the
-     * board header.
+     * @warning One message holds 128 bytes. A longer text does not arrive, and on
+     * ESP32 and ESP8266 a long list of numbers can crash the board. Keep texts
+     * short, or define a larger PLYNX_MAX_SENDBYTES before the board header.
      *
-     * @see PlynxTimer::setInterval, PLYNX_READ, syncVirtual, PLYNX_MSG_LIMIT
+     * @see PlynxTimer::setInterval, PLYNX_READ, syncVirtual
      */
     template <typename... Args>
     void virtualWrite(int pin, Args... values) {
@@ -142,22 +113,14 @@ public:
     }
 
     /**
-     * @brief Sends raw bytes to a virtual pin, exactly as they are in memory.
+     * @brief Sends bytes to a virtual pin exactly as they are.
      *
-     * The bytes are sent without any conversion. Use it to send several values
-     * already packed with zero bytes between them, or text that is not
-     * zero-terminated. WidgetTerminal uses it to send what it has collected.
+     * A zero byte splits them into separate values in the app. WidgetTerminal sends
+     * its text this way.
      *
-     * @param pin   The virtual pin, written V0, V1, V2 and so on.
-     * @param buff  The first byte to send.
-     * @param len   How many bytes to send.
-     *
-     * @par Where to call
-     * The same places as virtualWrite(), never at every turn of loop().
-     *
-     * @par App widget
-     * Every widget set to that virtual pin. Zero bytes inside the buffer split
-     * it into separate values.
+     * @param pin   The virtual pin, such as V1.
+     * @param buff  The bytes to send.
+     * @param len   How many bytes.
      *
      * @code
      * void sendTwoValues()
@@ -167,7 +130,7 @@ public:
      * }
      * @endcode
      *
-     * @note Like virtualWrite(), it does nothing while the board is offline.
+     * @note While the board is offline the bytes are lost.
      *
      * @see virtualWrite, WidgetTerminal
      */
@@ -180,21 +143,13 @@ public:
     }
 
     /**
-     * @brief Sends a list of values built with PlynxParam to a virtual pin.
+     * @brief Shows in the app a list of values built while the sketch runs.
      *
-     * Useful when the number of values is known only while the sketch runs,
-     * for example a reading for each sensor found on a bus. Each add() on the
-     * PlynxParam becomes one value in the app.
+     * Each add() on the PlynxParam is one value in the app, for example one
+     * reading for each sensor found on a bus.
      *
-     * @param pin    The virtual pin, written V0, V1, V2 and so on.
-     * @param param  The values, added one by one with PlynxParam::add().
-     *
-     * @par Where to call
-     * The same places as virtualWrite(), never at every turn of loop().
-     *
-     * @par App widget
-     * Every widget set to that virtual pin, the same as virtualWrite() with
-     * several values.
+     * @param pin    The virtual pin, such as V1.
+     * @param param  The values, added with PlynxParam::add().
      *
      * @code
      * void sendReadings()
@@ -207,8 +162,8 @@ public:
      * }
      * @endcode
      *
-     * @warning A value that does not fit in the buffer given to PlynxParam is
-     * left out. Size the buffer for the longest list you send.
+     * @warning A value that does not fit in the buffer is left out. Size the
+     * buffer for the longest list you send.
      *
      * @see virtualWrite, PlynxParam::add
      */
@@ -217,14 +172,10 @@ public:
     }
 
     /**
-     * @brief Sends a list of values built with PlynxParamAllocated to a
-     * virtual pin.
+     * @brief Shows in the app a list of values kept in heap memory.
      *
-     * The same as the PlynxParam version, for a list whose memory was taken
-     * from the heap with PlynxParamAllocated.
-     *
-     * @param pin    The virtual pin, written V0, V1, V2 and so on.
-     * @param param  The values, added one by one with PlynxParam::add().
+     * @param pin    The virtual pin, such as V1.
+     * @param param  The values, added with PlynxParam::add().
      *
      * @code
      * void sendList()
@@ -243,19 +194,13 @@ public:
     }
 
     /**
-     * @brief Runs the PLYNX_WRITE() handler of a pin from the sketch, as if the
-     * app had sent the value.
+     * @brief Runs your PLYNX_WRITE() code for a pin with a value you choose.
      *
-     * It calls the handler the sketch wrote for that pin, or the
-     * PLYNX_WRITE_DEFAULT() handler when there is none. Nothing travels on the
-     * network and the app does not see the value.
+     * The app does not see the value. In setup() it applies a starting value with
+     * the same code that handles the app.
      *
-     * @param pin    The virtual pin whose handler runs.
-     * @param param  The value the handler finds in `param`.
-     *
-     * @par Where to call
-     * Anywhere in the sketch, for example in setup() to apply a starting value
-     * with the same code that handles the app.
+     * @param pin    The virtual pin.
+     * @param param  The value your code reads as `param`.
      *
      * @code
      * PLYNX_WRITE(V1)
@@ -284,18 +229,9 @@ public:
     }
 
     /**
-     * @brief Runs the PLYNX_READ() handler of a pin from the sketch, as if the
-     * app had asked for the value.
+     * @brief Runs your PLYNX_READ() code for a pin, so its widget gets a fresh value.
      *
-     * It calls the handler the sketch wrote for that pin, or the
-     * PLYNX_READ_DEFAULT() handler when there is none. The handler usually
-     * answers with virtualWrite(), so the value does reach the app.
-     *
-     * @param pin  The virtual pin whose handler runs.
-     *
-     * @par Where to call
-     * Anywhere in the sketch, for example from a timer, to push the value with
-     * the same code that answers the app.
+     * @param pin  The virtual pin.
      *
      * @code
      * PLYNX_READ(V6)
@@ -322,19 +258,11 @@ public:
     }
 
     /**
-     * @brief Asks the server to send back the last value of every pin of this
-     * board.
+     * @brief Brings back the last values the app set, so the board restarts where
+     * it left off.
      *
-     * The values arrive as normal writes, so every PLYNX_WRITE() handler of a
-     * pin with a stored value runs once. It is the way a board finds the state
-     * of the app again after a restart, for example the position of a Button.
-     *
-     * @par Where to call
-     * Inside PLYNX_CONNECTED(), so it runs after every connect and reconnect.
-     *
-     * @par App widget
-     * Every widget of the project that has a value for this board, such as a
-     * Button, a Slider or an RGB Picker.
+     * Every pin with a saved value runs its PLYNX_WRITE() code once, for example
+     * to turn the relay back on after a power cut. Call it in PLYNX_CONNECTED().
      *
      * @code
      * PLYNX_CONNECTED()
@@ -348,8 +276,7 @@ public:
      * }
      * @endcode
      *
-     * @note The answer arrives during the next calls to Plynx.run(), not
-     * inside syncAll() itself.
+     * @note The values arrive during the next calls to Plynx.run().
      *
      * @see syncVirtual, PLYNX_CONNECTED, PLYNX_WRITE
      */
@@ -358,13 +285,10 @@ public:
     }
 
     /**
-     * @brief Sends an internal command to the server, used by the library
-     * itself.
+     * @brief A command the library sends to the server by itself, for the time
+     * and for the board details. A sketch does not call it.
      *
-     * The library uses it to ask for the time (WidgetRTC) and to report about
-     * the board. A sketch has no need to call it.
-     *
-     * @param params  The words of the command, sent in order.
+     * @param params  The words of the command, in order.
      *
      * @see WidgetRTC
      */
@@ -377,22 +301,12 @@ public:
     }
 
     /**
-     * @brief Asks the server to send back the last value of the virtual pins
-     * you name.
+     * @brief Brings back the last value the app set on the pins you name.
      *
-     * The values arrive as normal writes, so the PLYNX_WRITE() handler of each
-     * pin runs once with its stored value. It is the same as syncAll() for a
-     * few pins only.
+     * Each pin runs its PLYNX_WRITE() code once with that value. Call it in
+     * PLYNX_CONNECTED(), or after waking from deep sleep.
      *
      * @param pins  One or more virtual pins, such as V1 or V1, V2, V3.
-     *
-     * @par Where to call
-     * Inside PLYNX_CONNECTED(), or wherever the sketch needs the value kept on
-     * the server, for example after waking from deep sleep.
-     *
-     * @par App widget
-     * The widgets set to those pins. A pin with no stored value sends nothing
-     * back.
      *
      * @code
      * PLYNX_CONNECTED()
@@ -411,11 +325,11 @@ public:
      * }
      * @endcode
      *
-     * @note The answer arrives during the next calls to Plynx.run(), not
-     * inside syncVirtual() itself.
+     * @note The values arrive during the next calls to Plynx.run(). A pin that
+     * never had a value gets nothing.
      *
-     * @warning A pin without a PLYNX_WRITE() handler receives the value in
-     * PLYNX_WRITE_DEFAULT(), or nowhere when that is missing too.
+     * @warning A pin without PLYNX_WRITE() gets the value in PLYNX_WRITE_DEFAULT(),
+     * or nowhere when that is missing too.
      *
      * @see syncAll, PLYNX_CONNECTED, PLYNX_WRITE
      */
@@ -430,21 +344,19 @@ public:
 
 
     /**
-     * @brief Sends a message for the Twitter widget of old Blynk-legacy
-     * projects.
+     * @brief The Twitter widget of old Blynk projects, kept so old sketches still
+     * compile.
      *
-     * Kept so that old sketches still compile. With PLYNX_TEMPLATE_ID defined
-     * it becomes `logEvent("notify", msg)`.
+     * With PLYNX_TEMPLATE_ID defined it sends a push notification instead.
      *
      * @param msg  The text of the message.
      *
-     * @deprecated Use logEvent(). The compiler prints a warning where tweet()
-     * is used.
+     * @deprecated Use logEvent().
      *
      * @code
-     * void reportLeak()
+     * void sendAlert()
      * {
-     *   Plynx.logEvent("leak", "Water under the sink");   // instead of tweet()
+     *   Plynx.logEvent("alert", "Temperature above 30 C");   // instead of tweet()
      * }
      * @endcode
      *
@@ -464,23 +376,18 @@ public:
     }
 
     /**
-     * @brief Sends a push notification to the phone, the old way.
+     * @brief Sends a push notification to the phone.
      *
-     * The server delivers it through the Notification widget of the project.
-     * With PLYNX_TEMPLATE_ID defined it becomes `logEvent("notify", msg)`.
+     * Needs the Notification widget in the project.
      *
      * @param msg  The text the phone shows.
      *
-     * @deprecated Use logEvent(), which reaches the phone the same way. The
-     * compiler prints a warning where notify() is used.
-     *
-     * @par App widget
-     * Notification. Without that widget in the project nothing arrives.
+     * @deprecated Use logEvent(), which does the same.
      *
      * @code
-     * void reportDoor()
+     * void sendAlert()
      * {
-     *   Plynx.logEvent("door", "The garage door is open");   // instead of notify()
+     *   Plynx.logEvent("alert", "Temperature above 30 C");   // instead of notify()
      * }
      * @endcode
      *
@@ -500,26 +407,22 @@ public:
     }
 
     /**
-     * @brief Asks the server to send an email to an address, the old way.
+     * @brief Sends an email to an address.
      *
-     * With PLYNX_TEMPLATE_ID defined it becomes `logEvent("notify", msg)` and
-     * the address and the subject are not used.
+     * Needs the Email widget in the project. An address written in the widget is
+     * used instead of this one. With PLYNX_TEMPLATE_ID defined it sends a push
+     * notification instead.
      *
-     * @param email    The address that receives the email.
-     * @param subject  The subject line.
-     * @param msg      The body of the email.
+     * @param email    The address.
+     * @param subject  The subject.
+     * @param msg      The text of the email.
      *
-     * @deprecated Use logEvent(). The compiler prints a warning where email()
-     * is used.
-     *
-     * @par App widget
-     * Email. The server sends the email only when the project has that widget,
-     * and an address written in the widget wins over the one in the sketch.
+     * @deprecated Use logEvent().
      *
      * @code
-     * void reportBattery()
+     * void sendAlert()
      * {
-     *   Plynx.logEvent("battery", "Battery below 20%");   // instead of email()
+     *   Plynx.logEvent("alert", "Battery below 20%");   // instead of email()
      * }
      * @endcode
      *
@@ -541,26 +444,21 @@ public:
     }
 
     /**
-     * @brief Asks the server to send an email to the address set in the Email
-     * widget, the old way.
+     * @brief Sends an email to the address written in the Email widget.
      *
-     * With PLYNX_TEMPLATE_ID defined it becomes `logEvent("notify", msg)` and
-     * the subject is not used.
+     * Without an address in the widget, the email goes to the address of the Plynx
+     * account. With PLYNX_TEMPLATE_ID defined it sends a push notification
+     * instead.
      *
-     * @param subject  The subject line.
-     * @param msg      The body of the email.
+     * @param subject  The subject.
+     * @param msg      The text of the email.
      *
-     * @deprecated Use logEvent(). The compiler prints a warning where email()
-     * is used.
-     *
-     * @par App widget
-     * Email. The email goes to the address written in the widget, or to the
-     * email of the Plynx account when the widget has none.
+     * @deprecated Use logEvent().
      *
      * @code
-     * void reportTank()
+     * void sendAlert()
      * {
-     *   Plynx.logEvent("tank", "The water tank is full");   // instead of email()
+     *   Plynx.logEvent("alert", "Tank full");   // instead of email()
      * }
      * @endcode
      *
@@ -581,32 +479,23 @@ public:
     }
 
     /**
-     * @brief Changes how a widget looks in the app, such as its label or its
-     * color, from the board.
+     * @brief Changes the label, the color or the range of a widget, from the board.
      *
-     * It changes a property of every widget set to that virtual pin, never its
-     * value. The Plynx app applies these property names.
+     * The value of the widget stays as it is. These are the property names:
      * - `label`, the title of the widget.
      * - `color`, the main color, as `"#RRGGBB"` or as a number like 0xFF0000.
      * - `onLabel` and `offLabel`, the text of a Button when on and off.
      * - `onColor`, `offColor`, `onBackColor` and `offBackColor`, the text and
      *   background colors of a Button when on and off.
-     * - `min`, `max` and `step`, the range and the step of a Slider, a Step, a
-     *   Gauge or a Level Display.
+     * - `min`, `max` and `step`, the range of a Slider, a Step, a Gauge or a Level
+     *   Display.
      * - `maximumFractionDigits`, the decimals shown, from 0 to 3.
      * - `valueFormatting` and `suffix`, the text around the value, like `"°C"`.
      * - `url`, the address shown by an Image or a Video widget.
      *
      * @param pin       The virtual pin of the widget.
-     * @param property  The name of the property, from the list above.
-     * @param values    The new value of the property.
-     *
-     * @par Where to call
-     * In PLYNX_CONNECTED() to set the look once, or when something changes,
-     * for example to turn a Gauge red above a limit.
-     *
-     * @par App widget
-     * Every widget on that virtual pin that has the property.
+     * @param property  The property name, from the list above.
+     * @param values    The new value.
      *
      * @code
      * void showAlarm(bool on)
@@ -616,17 +505,11 @@ public:
      * }
      * @endcode
      *
-     * @warning The server refuses an empty value and a name it does not know.
-     * Its answer is an error code that the library does not pass on, so the
-     * sketch is not told. Check the name in the list above.
+     * @warning A name outside the list, or an empty value, changes nothing and the
+     * sketch is not told.
      *
-     * @warning The whole message has to fit in PLYNX_MAX_SENDBYTES (128 bytes
-     * by default). It holds the pin number, the property name and each value,
-     * each plus 1 byte. A text that does not fit is left out. On AVR boards
-     * such as the Uno and the Mega a number that does not fit is left out too.
-     * On the other boards, ESP32 and ESP8266 among them, a number that does
-     * not fit arrives cut, and a number added after it writes past the end of
-     * the buffer and corrupts the memory of the board.
+     * @warning One message holds 128 bytes. A longer text does not arrive, and on
+     * ESP32 and ESP8266 a long list of numbers can crash the board.
      *
      * @see WidgetLED, PlynxWidgetBase::setLabel, PlynxWidgetBase::setColor
      */
@@ -641,13 +524,10 @@ public:
     }
 
     /**
-     * @brief Changes a widget property with a value list built with PlynxParam.
-     *
-     * The same as the other setProperty(), for a property whose value is a list
-     * built while the sketch runs.
+     * @brief Changes a widget property with a value built with PlynxParam.
      *
      * @param pin       The virtual pin of the widget.
-     * @param property  The name of the property.
+     * @param property  The property name.
      * @param param     The value, built with PlynxParam::add().
      *
      * @code
@@ -672,20 +552,17 @@ public:
     }
 
     /**
-     * @brief Changes a widget property with a value list built with
-     * PlynxParamAllocated.
-     *
-     * The same as the PlynxParam version, for a list kept on the heap.
+     * @brief Changes a widget property with a value kept in heap memory.
      *
      * @param pin       The virtual pin of the widget.
-     * @param property  The name of the property.
+     * @param property  The property name.
      * @param param     The value, built with PlynxParam::add().
      *
      * @code
      * void renameWidget()
      * {
      *   PlynxParamAllocated value(32);
-     *   value.add("Garden");
+     *   value.add("Kitchen");
      *   Plynx.setProperty(V8, "label", value);
      * }
      * @endcode
@@ -702,38 +579,27 @@ public:
     }
 
     /**
-     * @brief Reports that something happened on the board, and the phone gets
-     * a push notification.
+     * @brief Sends a push notification to the phone, with the event name as text.
      *
-     * A Plynx server delivers the event as a push notification through the
-     * Notification widget of the project. With only a name, the name is the
-     * text the phone shows.
+     * Needs the Notification widget in the project. Call it once when the thing
+     * happens, not at every turn of loop().
      *
-     * @param event_name  A short name for the event, such as `"leak"`.
-     *
-     * @par Where to call
-     * Where the event is detected, once per event. A timer or a change check
-     * keeps it from repeating at every turn of loop().
-     *
-     * @par App widget
-     * Notification. Without that widget in the project nothing arrives.
+     * @param event_name  A short name, such as `"alarm"`.
      *
      * @code
-     * void checkWater()
+     * void checkInput()
      * {
-     *   static bool reported = false;
-     *   bool wet = digitalRead(4) == LOW;
-     *   if (wet && !reported) {
-     *     Plynx.logEvent("leak");
+     *   static bool sent = false;
+     *   bool on = digitalRead(4) == LOW;
+     *   if (on && !sent) {
+     *     Plynx.logEvent("alarm");
      *   }
-     *   reported = wet;
+     *   sent = on;
      * }
      * @endcode
      *
-     * @warning The name and the description together have to fit in
-     * PLYNX_MAX_SENDBYTES (128 bytes by default), and a text that does not fit
-     * is left out. With the default server settings the phone receives at most
-     * one notification every 5 seconds from the same board.
+     * @warning The phone gets at most one notification every 5 seconds from the
+     * same board. Name and text together hold 128 bytes.
      *
      * @see logEvent(const NAME&, const DESCR&), clearEvent
      */
@@ -746,22 +612,13 @@ public:
     }
 
     /**
-     * @brief Reports that something happened on the board, with a sentence the
-     * phone shows in the push notification.
+     * @brief Sends a push notification to the phone, with your sentence as text.
      *
-     * A Plynx server delivers the event as a push notification through the
-     * Notification widget of the project. The description is the text on the
-     * lock screen.
+     * Needs the Notification widget in the project. Call it once when the thing
+     * happens, not at every turn of loop().
      *
-     * @param event_name   A short name for the event, such as `"leak"`.
-     * @param description  The sentence the person reads on the phone.
-     *
-     * @par Where to call
-     * Where the event is detected, once per event, never at every turn of
-     * loop().
-     *
-     * @par App widget
-     * Notification. Without that widget in the project nothing arrives.
+     * @param event_name   A short name, such as `"alarm"`.
+     * @param description  The sentence the phone shows.
      *
      * @code
      * PlynxTimer timer;
@@ -770,7 +627,7 @@ public:
      * {
      *   float celsius = analogRead(A0) * 0.1;   // replace with your sensor
      *   if (celsius > 30) {
-     *     Plynx.logEvent("hot", String("Greenhouse at ") + celsius + " C");
+     *     Plynx.logEvent("hot", String("Temperature ") + celsius + " C");
      *   }
      * }
      *
@@ -787,10 +644,8 @@ public:
      * }
      * @endcode
      *
-     * @warning The name and the description together have to fit in
-     * PLYNX_MAX_SENDBYTES (128 bytes by default), and a text that does not fit
-     * is left out. With the default server settings the phone receives at most
-     * one notification every 5 seconds from the same board.
+     * @warning The phone gets at most one notification every 5 seconds from the
+     * same board. Name and text together hold 128 bytes.
      *
      * @see logEvent(const NAME&), clearEvent
      */
@@ -804,19 +659,15 @@ public:
     }
 
     /**
-     * @brief Sends the command that marks an event as solved, for servers that
-     * keep a list of events.
-     *
-     * A Plynx server turns events into push notifications and keeps no list,
-     * so there it has no effect. It is here for sketches written for servers
-     * that have an events list.
+     * @brief Marks an event as solved on servers that keep a list of events. A
+     * Plynx server keeps no list, and nothing happens.
      *
      * @param event_name  The name used in logEvent().
      *
      * @code
-     * void waterGone()
+     * void alarmOver()
      * {
-     *   Plynx.clearEvent("leak");
+     *   Plynx.clearEvent("alarm");
      * }
      * @endcode
      *
@@ -835,17 +686,15 @@ public:
     // Every function in this section may be changed, removed or renamed.
 
     /**
-     * @brief Runs the PLYNX_READ() handler of a pin, so the widget gets a fresh
-     * value.
-     *
-     * Available only with PLYNX_EXPERIMENTAL defined before the board header.
+     * @brief Runs your PLYNX_READ() code for a pin. Needs PLYNX_EXPERIMENTAL
+     * defined before the board header.
      *
      * @experimental
      *
-     * @param pin  The virtual pin whose PLYNX_READ() handler runs.
+     * @param pin  The virtual pin.
      *
      * @code
-     * // callReadHandler() does the same job and needs no setting
+     * // callReadHandler() does the same and needs no setting
      * PLYNX_READ(V6)
      * {
      *   Plynx.virtualWrite(V6, millis() / 1000);
@@ -857,8 +706,8 @@ public:
      * }
      * @endcode
      *
-     * @warning In this version a sketch that calls refresh() stops the build
-     * with "too many initializers for PlynxReq". Use callReadHandler().
+     * @warning In this version a sketch that calls refresh() does not compile. Use
+     * callReadHandler().
      *
      * @see callReadHandler, PLYNX_EXPERIMENTAL
      */
@@ -870,13 +719,10 @@ public:
     }
 
     /**
-     * @brief Waits a number of milliseconds while the board keeps talking to
-     * the server.
+     * @brief Waits a number of milliseconds while the board stays connected, so the
+     * app keeps working.
      *
-     * Unlike the Arduino delay(), it calls Plynx.run() over and over while it
-     * waits, so the connection stays alive and PLYNX_WRITE() handlers run in
-     * the meantime. Available only with PLYNX_EXPERIMENTAL defined before the
-     * board header.
+     * Needs PLYNX_EXPERIMENTAL defined before the board header.
      *
      * @experimental
      *
@@ -895,9 +741,9 @@ public:
      * }
      * @endcode
      *
-     * @warning A PLYNX_WRITE() handler that runs during the wait can call
-     * Plynx.delay() again, and each level takes more stack. Boards with little
-     * RAM can crash this way. A PlynxTimer is the safer way to wait.
+     * @warning A PLYNX_WRITE() that calls Plynx.delay() while another wait is
+     * running uses more memory each time, and a small board can crash. A
+     * PlynxTimer is the safer way to wait.
      *
      * @see PlynxTimer, run, PLYNX_EXPERIMENTAL
      */

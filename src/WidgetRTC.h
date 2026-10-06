@@ -32,12 +32,10 @@
  * It needs the Time library, installed from the Library Manager, and
  * `#include <WidgetRTC.h>` after the board header.
  *
- * @par Where to call
  * Create it at the top level and call begin() inside PLYNX_CONNECTED().
  *
- * @par App widget
- * RTC, where the time zone is chosen. Without an RTC widget in the project
- * the server sends no time.
+ * It needs an RTC widget in the project, where you choose the time zone.
+ * Without it the server sends no time.
  *
  * @code
  * #include <PlynxSimpleEsp32.h>
@@ -87,8 +85,7 @@ public:
      * @brief Asks the server for the time, and makes the Time library ask
      * again by itself from now on.
      *
-     * @par Where to call
-     * Inside PLYNX_CONNECTED(). Called before the board is connected, the
+     * Call it inside PLYNX_CONNECTED(). Called before the board is connected, the
      * request is lost. The next one leaves the first time the sketch reads
      * the time after 5 minutes.
      *

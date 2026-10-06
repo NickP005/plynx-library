@@ -140,8 +140,7 @@ public:
      * @param per       The BLE peripheral object of the sketch.
      * @param auth      The auth token of the board, from the Plynx app.
      *
-     * @par Where to call
-     * In setup(), once. The whole sketch is in examples/Boards_Bluetooth/Arduino_101_BLE.
+     * Call it in setup(), once. The whole sketch is in examples/Boards_Bluetooth/Arduino_101_BLE.
      *
      * @see PlynxProtocol::run, PlynxProtocol::connected
      */
@@ -159,8 +158,7 @@ public:
      * @param auth      The auth token of the board, from the Plynx app.
      * @param per       The BLE peripheral object of the sketch.
      *
-     * @par Where to call
-     * In setup(), once. The whole sketch is in examples/Boards_Bluetooth/Arduino_101_BLE.
+     * Call it in setup(), once. The whole sketch is in examples/Boards_Bluetooth/Arduino_101_BLE.
      *
      * @deprecated Write the peripheral first, as in begin(per, auth).
      *

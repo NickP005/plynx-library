@@ -310,8 +310,7 @@ public:
      *
      * @param auth  The auth token of the board, from the Plynx app.
      *
-     * @par Where to call
-     * In setup(), once, after setDeviceName().
+     * Call it in setup(), once, after setDeviceName().
      *
      * @code
      * #include <PlynxSimpleEsp32_NimBLE.h>
@@ -342,8 +341,7 @@ public:
      *
      * @param name  The name, such as "Greenhouse".
      *
-     * @par Where to call
-     * In setup(), before begin(). The name is used when Bluetooth Low Energy (NimBLE) starts.
+     * Call it in setup(), before begin(). The name is used when Bluetooth Low Energy (NimBLE) starts.
      *
      * @code
      * #include <PlynxSimpleEsp32_NimBLE.h>

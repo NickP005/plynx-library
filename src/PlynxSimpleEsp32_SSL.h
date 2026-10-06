@@ -146,8 +146,7 @@ public:
      *                 from. The default is the Let's Encrypt root that the library
      *                 carries.
      *
-     * @par Where to call
-     * In setup(), once.
+     * Call it in setup(), once.
      *
      * @code
      * #define PLYNX_PRINT Serial

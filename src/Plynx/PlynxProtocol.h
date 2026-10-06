@@ -71,13 +71,11 @@ __attribute__((weak)) void PlynxOtaDispatch(PlynxReq& req, const PlynxParam& par
 #endif // ESP32 || ESP8266
 
 /**
- * @brief The part of the Plynx object that connects to the server and keeps
- * the connection alive.
+ * @brief Connects the board to the server and keeps it online. You call these
+ * functions as `Plynx.run()`, `Plynx.connected()` and so on.
  *
- * The board header creates the global object `Plynx` from a class built on
- * this one, so a sketch calls these functions as `Plynx.run()`,
- * `Plynx.connected()` and so on. The functions that send values are in
- * PlynxApi, and `begin()` and `config()` are in the class of each board.
+ * The functions that send values are in PlynxApi. `begin()` and `config()`
+ * are in the header of your board.
  *
  * @see PlynxApi, PlynxWifi
  */
@@ -110,15 +108,13 @@ public:
     /**
      * @brief Tells whether the board is connected to the server right now.
      *
-     * It turns true when the server accepts the token, and false as soon as
-     * the board notices that the connection dropped. It says nothing about the
-     * WiFi, which can be up while the server is unreachable.
+     * It is false as soon as the board notices the connection dropped. The WiFi
+     * can be up while the server is unreachable, and then it is false too.
      *
      * @return true when the board is connected and logged in to the server.
      *
-     * @par Where to call
-     * Anywhere. Typical uses are an LED that shows the link, or skipping work
-     * that only makes sense online.
+     * For example, an LED that shows the link, or skipping work that needs the
+     * connection.
      *
      * @code
      * PlynxTimer timer;
@@ -156,8 +152,7 @@ public:
      *
      * @return true after the server refused the token.
      *
-     * @par Where to call
-     * After connect() returns false, to tell a wrong token apart from a
+     * Call it after connect() returns false, to tell a wrong token apart from a
      * network that does not work.
      *
      * @code
@@ -201,8 +196,7 @@ public:
      *                 times PLYNX_TIMEOUT_MS, 18 seconds.
      * @return true when the board is connected.
      *
-     * @par Where to call
-     * In setup() after config(), when the sketch has to keep working without a
+     * Call it in setup() after config(), when the sketch has to keep working without a
      * connection. Plynx.begin() calls it for you and waits without a limit.
      *
      * @code
@@ -246,8 +240,7 @@ public:
      * reconnect by itself, until connect() is called. PLYNX_DISCONNECTED()
      * does not run for a disconnect asked by the sketch.
      *
-     * @par Where to call
-     * Before a long task that must not be disturbed, before deep sleep, or to
+     * Call it before a long task that must not be disturbed, before deep sleep, or to
      * save power on a battery board.
      *
      * @code
@@ -271,8 +264,8 @@ public:
     }
 
     /**
-     * @brief Keeps the board connected and runs the handlers for what arrives
-     * from the app.
+     * @brief Keeps the board online and runs your PLYNX_WRITE() code when the app
+     * sends a value. Call it at every turn of loop().
      *
      * Each call reads the messages that arrived, runs the matching
      * PLYNX_WRITE() and PLYNX_READ() handlers, sends the heartbeat that keeps
@@ -287,9 +280,6 @@ public:
      *         calls, even while the board is offline waiting for its next
      *         attempt and after the server refused the token. To know whether
      *         the board is online, call connected().
-     *
-     * @par Where to call
-     * In loop(), at every turn, and nowhere else.
      *
      * @code
      * PlynxTimer timer;

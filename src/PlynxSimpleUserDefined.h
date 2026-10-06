@@ -74,8 +74,7 @@ public:
      *
      * @param auth      The auth token of the board, from the Plynx app.
      *
-     * @par Where to call
-     * In setup(), once. The whole sketch is in the comments at the top of PlynxSimpleUserDefined.h.
+     * Call it in setup(), once. The whole sketch is in the comments at the top of PlynxSimpleUserDefined.h.
      *
      * @see PlynxProtocol::run, PlynxProtocol::connected
      */

@@ -91,8 +91,7 @@
  * The board tells the server this number at every connect, and a Plynx server
  * closes a board that stays silent for about 2.3 times as long.
  *
- * @par Where to call
- * Before the board header.
+ * Write it before the board header.
  *
  * @code
  * #define PLYNX_HEARTBEAT 20     // notice a lost board sooner
@@ -113,8 +112,7 @@
  * reading a message waits at most this long. Plynx.connect() waits three
  * times as long by default.
  *
- * @par Where to call
- * Before the board header.
+ * Write it before the board header.
  *
  * @code
  * #define PLYNX_TIMEOUT_MS 10000UL   // a slow GSM link
@@ -138,8 +136,7 @@
  * call, running Plynx.run() meanwhile. logEvent() does not wait. 0 removes the
  * gap.
  *
- * @par Where to call
- * Before the board header.
+ * Write it before the board header.
  *
  * @code
  * #define PLYNX_MSG_LIMIT 30
@@ -163,8 +160,7 @@
  * the board drop the connection and reconnect, and with PLYNX_PRINT the
  * serial monitor shows "Packet too big".
  *
- * @par Where to call
- * Before the board header.
+ * Write it before the board header.
  *
  * @code
  * #define PLYNX_MAX_READBYTES 1024   // long texts from a Text Input
@@ -187,8 +183,7 @@
  * and on the other boards, ESP32 and ESP8266 among them, it arrives cut and
  * the next number writes past the end of the buffer.
  *
- * @par Where to call
- * Before the board header.
+ * Write it before the board header.
  *
  * @code
  * #define PLYNX_MAX_SENDBYTES 256   // longer texts to the app

@@ -20,12 +20,8 @@
  * Each row has a number chosen by the sketch, a name and a value. The Table
  * keeps at most 100 rows and drops the oldest ones.
  *
- * @par Where to call
  * Create it at the top level and connect it to the pin with
  * PLYNX_ATTACH_WIDGET(). Add rows where the data is.
- *
- * @par App widget
- * Table.
  *
  * @code
  * WidgetTable table;

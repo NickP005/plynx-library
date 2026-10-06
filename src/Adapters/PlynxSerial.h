@@ -136,8 +136,7 @@ public:
      * @param stream  The serial port that carries the data, such as Serial.
      * @param auth    The auth token of the board, from the Plynx app.
      *
-     * @par Where to call
-     * In setup(), after the port is started with begin().
+     * Call it in setup(), after the port is started with begin().
      *
      * @code
      * #include <PlynxSimpleStream.h>

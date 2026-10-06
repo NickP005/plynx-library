@@ -98,12 +98,8 @@
  *         space of the account is full. A negative number means the board
  *         could not talk to the server at all.
  *
- * @par Where to call
- * Where a picture is ready, for example after a camera shot, never at every
- * turn of loop().
- *
- * @par App widget
- * Image, set to the same virtual pin.
+ * Call it when a picture is ready, for example after a camera shot, never at
+ * every turn of loop(). An Image widget on the same virtual pin shows it.
  *
  * @code
  * #include <PlynxSimpleEsp32.h>

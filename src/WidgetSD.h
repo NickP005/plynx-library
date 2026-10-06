@@ -26,7 +26,6 @@
  * followed by a file sends the file in pieces of 29 bytes. It needs the SD
  * library and `#include <WidgetSD.h>` after the board header.
  *
- * @par App widget
  * The Plynx app (October 2026) has no widget that sends these commands. A
  * sketch or another board can send them through WidgetBridge.
  *

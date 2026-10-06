@@ -21,7 +21,6 @@
  *
  * It takes the four values in that order. A value that is missing reads as 0.
  *
- * @par App widget
  * It reads the format of the GPS Stream widget of Blynk-legacy apps. The
  * Plynx app (October 2026) offers no such widget, so in a Plynx project the
  * values come from a sketch, for example through WidgetBridge.

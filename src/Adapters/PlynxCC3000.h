@@ -197,8 +197,7 @@ public:
      * @param domain    The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
      * @param port      The port of the server.
      *
-     * @par Where to call
-     * In setup(), once. The whole sketch is in examples/Boards_WiFi/CC3000 and examples/Boards_WiFi/TinyDuino_WiFi.
+     * Call it in setup(), once. The whole sketch is in examples/Boards_WiFi/CC3000 and examples/Boards_WiFi/TinyDuino_WiFi.
      *
      * @warning It waits without a time limit. Turn on PLYNX_PRINT to read
      * why when setup() does not end.
@@ -227,8 +226,7 @@ public:
      * @param ip        The IP address of the server.
      * @param port      The port of the server.
      *
-     * @par Where to call
-     * In setup(), once. The whole sketch is in examples/Boards_WiFi/CC3000 and examples/Boards_WiFi/TinyDuino_WiFi.
+     * Call it in setup(), once. The whole sketch is in examples/Boards_WiFi/CC3000 and examples/Boards_WiFi/TinyDuino_WiFi.
      *
      * @warning It waits without a time limit. Turn on PLYNX_PRINT to read
      * why when setup() does not end.

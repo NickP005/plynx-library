@@ -28,22 +28,12 @@ extern long long    atoll_internal(const char *s);
 #endif
 
 /**
- * @brief The value that arrived from the app, available as `param` inside
- * PLYNX_WRITE().
+ * @brief The value the app sent, called `param` inside PLYNX_WRITE().
  *
- * A value travels as text. `param` reads it as the type the sketch needs,
- * with asInt(), asFloat(), asStr() and the others. Some widgets send more than
- * one value at once (an RGB Picker sends three, a Joystick two), and
- * `param[0]`, `param[1]`, `param[2]` read each of them.
- *
- * The same class builds lists of values to send, with add(), for
- * Plynx.virtualWrite() and Plynx.setProperty().
- *
- * @par Where to call
- * Inside PLYNX_WRITE(), where `param` exists. Building a list works anywhere.
- *
- * @par App widget
- * Every widget that writes a virtual pin.
+ * Read it as the type you need with asInt(), asFloat() or asStr(). An RGB
+ * Picker sends three values and a Joystick two: read them with `param[0]`,
+ * `param[1]`, `param[2]`. The same class also builds a list of values to send
+ * with Plynx.virtualWrite().
  *
  * @code
  * PLYNX_WRITE(V1)
@@ -56,8 +46,8 @@ extern long long    atoll_internal(const char *s);
  * }
  * @endcode
  *
- * @warning The text belongs to the library and is gone when the handler
- * ends. Copy it into a `String` or an array to keep it.
+ * @warning The text is gone when PLYNX_WRITE() ends. Copy it into a `String`
+ * to keep it.
  *
  * @see PLYNX_WRITE, asInt, asStr, operator[]
  */
@@ -297,14 +287,12 @@ public:
     {}
 
     /**
-     * @brief Reads the value as text.
+     * @brief Reads the value as text, such as "1" or "hello". A Text Input sends
+     * its text, a Menu the number of the chosen item.
      *
      * With several values it reads the first one.
      *
-     * @return The text that arrived, such as "1" or "hello".
-     *
-     * @par App widget
-     * A Text Input sends its text, a Menu the number of the chosen item.
+     * @return The text.
      *
      * @code
      * PLYNX_WRITE(V1)
@@ -314,7 +302,7 @@ public:
      * }
      * @endcode
      *
-     * @warning The pointer is valid only inside the handler.
+     * @warning The text is valid only inside PLYNX_WRITE().
      *
      * @see asInt, asFloat, asString
      */
@@ -336,15 +324,12 @@ public:
     const char* asString() const    { return buff; }
 
     /**
-     * @brief Reads the value as a whole number.
+     * @brief Reads the value as a whole number. A Button sends 1 and 0, a Slider
+     * a number between its min and max.
      *
-     * With several values it reads the first one. A Button sends 1 and 0, a
-     * Slider sends a number between its min and max.
+     * With several values it reads the first one.
      *
      * @return The number, or 0 when the text is not a number. "2.7" gives 2.
-     *
-     * @par App widget
-     * Button, Slider, Step, Menu, Number Input.
      *
      * @code
      * PLYNX_WRITE(V1)
@@ -482,14 +467,12 @@ public:
     iterator end() const   { return iterator(buff+len, buff+len); }
 
     /**
-     * @brief Gives one value by its position, starting from 0.
+     * @brief Gives one value by its position, starting from 0. An RGB Picker sends
+     * red, green and blue, a Joystick x and y.
      *
      * @param index  0 for the first value, 1 for the second and so on.
      * @return The value. When it does not exist, isValid() is false, asInt()
      *         gives 0 and asStr() gives NULL.
-     *
-     * @par App widget
-     * RGB Picker (red, green, blue), Joystick (x, y), Map and Table.
      *
      * @code
      * PLYNX_WRITE(V2)

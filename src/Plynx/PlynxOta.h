@@ -157,8 +157,7 @@ PlynxSimpleEsp32.h / PlynxSimpleEsp8266.h FIRST, or define PLYNX_NO_OTA.
  * a sketch that spends long in setup() before Plynx.begin(), or a board that
  * stays offline for long.
  *
- * @par Where to call
- * Above `<PlynxSimpleEsp32.h>`.
+ * Write it above `<PlynxSimpleEsp32.h>`.
  *
  * @code
  * #define PLYNX_OTA_GUARD_MS 600000UL   // ten minutes

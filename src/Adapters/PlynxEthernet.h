@@ -70,8 +70,7 @@ public:
      * @param domain  The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
      * @param port    The port of the server, PLYNX_DEFAULT_PORT by default.
      *
-     * @par Where to call
-     * In setup(), after Ethernet.begin() written by the sketch, and before
+     * Call it in setup(), after Ethernet.begin() written by the sketch, and before
      * Plynx.connect().
      *
      * @code
@@ -148,8 +147,7 @@ public:
      * @param mac     The MAC address of the shield. Without it the library
      *                makes one from the token.
      *
-     * @par Where to call
-     * In setup(), once.
+     * Call it in setup(), once.
      *
      * @code
      * #include <SPI.h>

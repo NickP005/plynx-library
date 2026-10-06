@@ -167,8 +167,7 @@ public:
      *
      * @param auth      The auth token of the board, from the Plynx app.
      *
-     * @par Where to call
-     * In setup(), once. The whole sketch is in examples/Boards_Bluetooth/WioTerminal_BLE.
+     * Call it in setup(), once. The whole sketch is in examples/Boards_Bluetooth/WioTerminal_BLE.
      *
      * @see PlynxProtocol::run, PlynxProtocol::connected
      */
@@ -184,8 +183,7 @@ public:
      *
      * @param name      The name the phone shows, such as "Greenhouse".
      *
-     * @par Where to call
-     * In setup(), once, before begin(). The whole sketch is in examples/Boards_Bluetooth/WioTerminal_BLE.
+     * Call it in setup(), once, before begin(). The whole sketch is in examples/Boards_Bluetooth/WioTerminal_BLE.
      *
      * @see PlynxProtocol::run, PlynxProtocol::connected
      */

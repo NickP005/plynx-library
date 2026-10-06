@@ -204,8 +204,7 @@ public:
      *                     board checks the certificate against the root the library
      *                     carries.
      *
-     * @par Where to call
-     * In setup(), once.
+     * Call it in setup(), once.
      *
      * @code
      * #define PLYNX_PRINT Serial

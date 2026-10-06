@@ -22,7 +22,6 @@
  * It decodes the format of the Time Input widget of Blynk-legacy apps. A
  * start or a stop can be a time of day, sunrise or sunset, or nothing.
  *
- * @par App widget
  * The Plynx app (October 2026) offers no Time Input widget. For a daily
  * schedule it has the Automation widget, which writes 1 and 0 to the pin at
  * the chosen times.

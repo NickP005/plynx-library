@@ -122,8 +122,7 @@ public:
      * @param domain    The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
      * @param port      The port of the server.
      *
-     * @par Where to call
-     * In setup(), once. The whole sketch is in examples/Boards_GSM/TinyGSM_SIM800_SIM900.
+     * Call it in setup(), once. The whole sketch is in examples/Boards_GSM/TinyGSM_SIM800_SIM900.
      *
      * @warning It waits without a time limit. Turn on PLYNX_PRINT to read
      * why when setup() does not end.

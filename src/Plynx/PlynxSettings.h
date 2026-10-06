@@ -31,9 +31,8 @@
  * auth token". It is the first thing to turn on when a board does not appear
  * online.
  *
- * @par Where to call
- * The first line of the sketch, above the board header. Call Serial.begin()
- * in setup() before Plynx.begin().
+ * Write it on the first line of the sketch, above the board header. Call
+ * Serial.begin() in setup() before Plynx.begin().
  *
  * @code
  * #define PLYNX_PRINT Serial
@@ -64,8 +63,7 @@
  *
  * It works only together with PLYNX_PRINT.
  *
- * @par Where to call
- * Above the board header, next to PLYNX_PRINT.
+ * Write it above the board header, next to PLYNX_PRINT.
  *
  * @code
  * #define PLYNX_PRINT Serial
@@ -105,8 +103,7 @@
  * sketch knows. Any other number stops the build with "PLYNX_BOARD_PINS must
  * be 30 or 38".
  *
- * @par Where to call
- * Above the board header.
+ * Write it above the board header.
  *
  * @code
  * #define PLYNX_BOARD_PINS 38
@@ -122,8 +119,7 @@
  * The board sends it at every connect and during setup, and the Plynx app
  * offers the ready-made dashboard of that project when the board is paired.
  *
- * @par Where to call
- * Above the board header.
+ * Write it above the board header.
  *
  * @code
  * #define PLYNX_PROJECT "your-published-project-id"
@@ -141,8 +137,7 @@
  * The board then cannot receive a new firmware from the server, and the
  * sketch saves about 7.5 KB of flash.
  *
- * @par Where to call
- * Above the board header.
+ * Write it above the board header.
  *
  * @code
  * #define PLYNX_NO_OTA
@@ -160,8 +155,7 @@
  * It is required next to ESP RainMaker, which defines the same hook. Without
  * it the link fails with "multiple definition of verifyRollbackLater".
  *
- * @par Where to call
- * Above `<PlynxSimpleEsp32.h>`.
+ * Write it above `<PlynxSimpleEsp32.h>`.
  *
  * @code
  * #define PLYNX_NO_BOOTLOADER_ROLLBACK
@@ -365,8 +359,7 @@
  * The board sends it at connect as "tmpl". It also turns notify(), email()
  * and tweet() into logEvent("notify", ...). A Plynx server does not need it.
  *
- * @par Where to call
- * Above the board header.
+ * Write it above the board header.
  *
  * @code
  * #define PLYNX_TEMPLATE_ID "TMPL12345"
@@ -384,8 +377,7 @@
  * The server keeps it with the information about the board, so you can tell
  * which firmware a board runs.
  *
- * @par Where to call
- * Above the board header.
+ * Write it above the board header.
  *
  * @code
  * #define PLYNX_FIRMWARE_VERSION "1.0.3"

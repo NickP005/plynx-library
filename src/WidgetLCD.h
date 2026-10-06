@@ -19,12 +19,8 @@
  * Each print() writes over the characters already on the screen, like a real
  * LCD, and what goes past the end of the line is lost.
  *
- * @par Where to call
  * Create it at the top level with the pin of the LCD widget. Print from a
  * timer function or from a handler.
- *
- * @par App widget
- * LCD.
  *
  * @code
  * WidgetLCD lcd(V4);
@@ -58,7 +54,7 @@ class WidgetLCD
 public:
     /**
      * @brief Ties the LCD object to the virtual pin of the LCD widget.
-     * @param vPin  The virtual pin, written V0, V1, V2 and so on.
+     * @param vPin  The virtual pin, such as V4.
      *
      * @code
      * WidgetLCD lcd(V4);

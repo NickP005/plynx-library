@@ -256,8 +256,7 @@ public:
      *
      * @param auth      The auth token of the board, from the Plynx app.
      *
-     * @par Where to call
-     * In setup(), once. The whole sketch is in examples/Boards_Bluetooth/RedBear_Duo_BLE.
+     * Call it in setup(), once. The whole sketch is in examples/Boards_Bluetooth/RedBear_Duo_BLE.
      *
      * @see PlynxProtocol::run, PlynxProtocol::connected
      */

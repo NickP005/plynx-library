@@ -100,8 +100,7 @@ public:
      * @param domain  The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
      * @param port    The port of the server, PLYNX_DEFAULT_PORT by default.
      *
-     * @par Where to call
-     * In setup(), before Plynx.connect(), when the sketch joins the WiFi by
+     * Call it in setup(), before Plynx.connect(), when the sketch joins the WiFi by
      * itself.
      *
      * @see PlynxProtocol::connect, begin
@@ -142,8 +141,7 @@ public:
      * @param domain  The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
      * @param port    The port of the server, PLYNX_DEFAULT_PORT by default.
      *
-     * @par Where to call
-     * In setup(), once. The sketch for each board is in
+     * Call it in setup(), once. The sketch for each board is in
      * examples/Boards_WiFi, for example Arduino_MKR1010.
      *
      * @warning It waits without a time limit. With a wrong WiFi password or a

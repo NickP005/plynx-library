@@ -120,8 +120,7 @@ public:
      * @param domain  The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
      * @param port    The port of the server. The default is PLYNX_DEFAULT_PORT.
      *
-     * @par Where to call
-     * In setup(), before Plynx.connect().
+     * Call it in setup(), before Plynx.connect().
      *
      * @code
      * #include <PlynxSimpleEsp8266.h>
@@ -200,8 +199,7 @@ public:
      * @param domain  The address of the server. The default is PLYNX_DEFAULT_DOMAIN.
      * @param port    The port of the server. The default is PLYNX_DEFAULT_PORT.
      *
-     * @par Where to call
-     * In setup(), once, after Serial.begin().
+     * Call it in setup(), once, after Serial.begin().
      *
      * @code
      * #define PLYNX_PRINT Serial
@@ -297,11 +295,7 @@ public:
      * token, the hotspot opens again. The same sketch works on every board,
      * with no token in the code.
      *
-     * @par Where to call
-     * In setup(), once.
-     *
-     * @par App widget
-     * None. The Plynx app shows the board while adding a device.
+     * Call it in setup(), once.
      *
      * @code
      * #define PLYNX_PRINT Serial
@@ -358,8 +352,7 @@ public:
      * @brief Forgets the saved WiFi and token and restarts the board, which
      * opens the setup hotspot again.
      *
-     * @par Where to call
-     * When the person asks for it, for example on a long press of a button.
+     * Call it when the person asks for it, for example on a long press of a button.
      *
      * @code
      * #include <PlynxSimpleEsp8266.h>

@@ -26,41 +26,29 @@
 #endif
 
 /**
- * @brief Writes text to the Terminal widget of the app, like the Serial
- * Monitor, and reads what the person types there.
+ * @brief Prints text in the Terminal widget of the app, like the Serial
+ * Monitor, and reads what you type there.
  *
- * It works like `Serial`. print() and println() collect the text on the board,
- * and flush() sends what was collected. Each send becomes one entry in the
- * Terminal, which keeps the last 100. What the person types in the Terminal
- * arrives in the PLYNX_WRITE() of the same pin.
- *
- * @par Where to call
- * Create it at the top level with the pin of the Terminal widget. Print from
- * a timer function, from a handler, or from setup().
- *
- * @par App widget
- * Terminal.
+ * print() and println() collect the text, flush() sends it. The Terminal keeps
+ * the last 100 messages. What you type in the Terminal arrives in the
+ * PLYNX_WRITE() of the same pin.
  *
  * @code
  * WidgetTerminal terminal(V9);
  *
- * PLYNX_WRITE(V9)                      // the person typed a line
+ * PLYNX_WRITE(V9)                      // you typed a line
  * {
- *   if (String("hello") == param.asStr()) {
- *     terminal.println("Hello to you");
- *   } else {
- *     terminal.print("You wrote ");
- *     terminal.println(param.asStr());
- *   }
+ *   terminal.print("You wrote ");
+ *   terminal.println(param.asStr());
  *   terminal.flush();                  // send it now
  * }
  * @endcode
  *
  * @warning Without flush() the text waits on the board until 64 characters
- * have piled up. Call flush() after the last print().
+ * pile up. Call flush() after the last print().
  *
- * @warning A print() at every turn of loop() floods the connection. Print
- * from a timer or when something changes.
+ * @warning Print from a timer or when something changes. A print() at every
+ * turn of loop() floods the connection.
  *
  * @see flush, clear, PLYNX_WRITE
  */
@@ -72,9 +60,8 @@ class WidgetTerminal
 {
 public:
     /**
-     * @brief Ties the terminal object to the virtual pin of the Terminal
-     * widget.
-     * @param vPin  The virtual pin, written V0, V1, V2 and so on.
+     * @brief The terminal on the virtual pin of your Terminal widget.
+     * @param vPin  The virtual pin, such as V9.
      *
      * @code
      * WidgetTerminal terminal(V9);
@@ -88,10 +75,8 @@ public:
     //virtual ~WidgetTerminal() {}
 
     /**
-     * @brief Adds one character to the text waiting to be sent.
-     *
-     * print() and println() call it for every character. When 64 characters
-     * are waiting it sends them by itself.
+     * @brief Adds one character to the text waiting to be sent. At 64 characters
+     * it sends them by itself.
      *
      * @param byte  The character.
      * @return Always 1.
@@ -117,15 +102,9 @@ public:
     }
 
     /**
-     * @brief Sends to the app the text collected with print() and println().
+     * @brief Sends to the Terminal the text collected with print() and println().
      *
-     * Nothing happens when no text is waiting.
-     *
-     * @par Where to call
-     * After the last print() of a message.
-     *
-     * @par App widget
-     * Terminal, which shows the text as one entry.
+     * Call it after the last print() of a message.
      *
      * @code
      * WidgetTerminal terminal(V9);
@@ -151,11 +130,7 @@ public:
     }
     
     /**
-     * @brief Sends what is waiting, then sends the word `clr`, the command
-     * that asks the Terminal to empty its screen.
-     *
-     * @par App widget
-     * Terminal.
+     * @brief Asks the Terminal to empty its screen.
      *
      * @code
      * WidgetTerminal terminal(V9);
@@ -168,8 +143,8 @@ public:
      * }
      * @endcode
      *
-     * @warning The Plynx app (iOS, October 2026) shows `clr` as a line of
-     * text instead of emptying the Terminal.
+     * @warning The Plynx app for iPhone (October 2026) shows the word `clr` as a
+     * line instead of emptying the Terminal.
      *
      * @see flush
      */

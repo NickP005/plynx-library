@@ -36,7 +36,7 @@ class PlynxWidgetBase
 public:
     /**
      * @brief Ties the widget object to a virtual pin.
-     * @param vPin  The virtual pin, written V0, V1, V2 and so on.
+     * @param vPin  The virtual pin, such as V3.
      *
      * @code
      * WidgetLED led(V3);   // the LED widget in the app is set to V3
@@ -67,8 +67,7 @@ public:
      * @brief Changes the title the widget shows in the app.
      * @param args  The new title.
      *
-     * @par App widget
-     * The widget on this pin. It is Plynx.setProperty(pin, "label", ...).
+     * It is the same as Plynx.setProperty(pin, "label", ...).
      *
      * @code
      * WidgetLED pump(V3);
@@ -170,10 +169,9 @@ public:
  * rows the person selects or moves.
  *
  * @param widget  The widget object, created without a pin.
- * @param pin     The virtual pin, written V0, V1, V2 and so on.
+ * @param pin     The virtual pin, such as V8.
  *
- * @par Where to call
- * At the top level of the sketch, after the object.
+ * Write it at the top level of the sketch, after the object.
  *
  * @code
  * WidgetTable table;

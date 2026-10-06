@@ -142,8 +142,7 @@ public:
      * @param port      The port of the server.
      * @param root_ca   The certificate, in PEM text, that the server's certificate must come from.
      *
-     * @par Where to call
-     * In setup(), once. The whole sketch is in examples/Plynx.Edgent/Edgent_Wio_Terminal.
+     * Call it in setup(), once. The whole sketch is in examples/Plynx.Edgent/Edgent_Wio_Terminal.
      *
      * @warning It waits without a time limit. Turn on PLYNX_PRINT to read
      * why when setup() does not end.
@@ -172,8 +171,7 @@ public:
      * @param port      The port of the server.
      * @param root_ca   The certificate, in PEM text, that the server's certificate must come from.
      *
-     * @par Where to call
-     * In setup(), once. The whole sketch is in examples/Plynx.Edgent/Edgent_Wio_Terminal.
+     * Call it in setup(), once. The whole sketch is in examples/Plynx.Edgent/Edgent_Wio_Terminal.
      *
      * @warning It waits without a time limit. Turn on PLYNX_PRINT to read
      * why when setup() does not end.

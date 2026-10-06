@@ -46,18 +46,13 @@ typedef void (*timer_callback)(void);
 typedef void (*timer_callback_p)(void *);
 
 /**
- * @brief Runs functions later or at regular intervals, without stopping the
- * board.
+ * @brief Runs your functions every few seconds, or once after a wait, while the
+ * board stays connected.
  *
- * It is the way to wait in a Plynx sketch. delay() stops everything,
- * Plynx.run() included, while a PlynxTimer only notes when each function is
- * due and calls it from timer.run() in loop(). One PlynxTimer holds up to 16
- * timers. In the code the class is written SimpleTimer, and PlynxTimer is the
- * name to use.
- *
- * @par Where to call
- * Create it at the top level of the sketch, set the timers in setup(), and
- * call timer.run() in loop() next to Plynx.run().
+ * Use it instead of delay(). delay() stops Plynx.run() too, and the board drops
+ * off the app. One PlynxTimer holds up to 16 timers. Create it at the top of
+ * the sketch, set the timers in setup(), call timer.run() in loop(). Compiler
+ * errors call it SimpleTimer.
  *
  * @code
  * PlynxTimer timer;
@@ -82,8 +77,8 @@ typedef void (*timer_callback_p)(void *);
  *
  * @warning Without timer.run() in loop() no timer ever fires.
  *
- * @warning A function called by the timer runs inside timer.run(). If it
- * takes long, or calls delay(), it stops Plynx.run() the same way.
+ * @warning Your function runs inside timer.run(). A delay() in it stops
+ * Plynx.run() just the same.
  *
  * @see setInterval, setTimeout, PlynxProtocol::run
  */
@@ -125,13 +120,10 @@ public:
     void init();
 
     /**
-     * @brief Calls the functions whose time has come.
+     * @brief Calls the functions whose time has come. Put it in loop(), next to
+     * Plynx.run().
      *
-     * A timer that is late by several intervals runs once, and the missed
-     * runs are skipped.
-     *
-     * @par Where to call
-     * In loop(), at every turn, next to Plynx.run().
+     * A timer late by several intervals runs once and skips the missed runs.
      *
      * @code
      * PlynxTimer timer;
@@ -148,21 +140,15 @@ public:
     void run();
 
     /**
-     * @brief Calls a function every `d` milliseconds, forever.
+     * @brief Calls a function every `d` milliseconds, forever. Set it once in
+     * setup().
      *
-     * @param d  The interval in milliseconds. On AVR boards write a product
-     *           as 60 * 1000L, because 60 * 1000 overflows an `int` there.
-     * @param f  The function to call. It takes no parameters and returns
-     *           nothing. Write its name without parentheses.
-     * @return The number of the timer, from 0 to 15, to use with
-     *         deleteTimer() and the others. -1 when all 16 are taken.
-     *
-     * @par Where to call
-     * In setup(), once for each repeating job.
-     *
-     * @par App widget
-     * Any widget that shows what the function sends with
-     * Plynx.virtualWrite().
+     * @param d  The interval in milliseconds. On AVR boards write 60 * 1000L,
+     *           because 60 * 1000 overflows an `int` there.
+     * @param f  The function to call, without parentheses. It takes no
+     *           parameters and returns nothing.
+     * @return The number of the timer, from 0 to 15, for deleteTimer() and the
+     *         others. -1 when all 16 are taken.
      *
      * @code
      * PlynxTimer timer;
@@ -185,12 +171,11 @@ public:
      * }
      * @endcode
      *
-     * @warning An interval of a few milliseconds with a virtualWrite() inside
-     * floods the connection. Between 1 and 10 sends per second is plenty for
-     * the app.
+     * @warning A virtualWrite() every few milliseconds floods the connection. 1 to
+     * 10 sends per second is plenty for the app.
      *
-     * @warning Calling setInterval() inside loop() adds a new timer at every
-     * turn, and after 16 turns there is no room left.
+     * @warning In loop() it adds a new timer at every turn, and after 16 turns
+     * there is no room left.
      *
      * @see setTimeout, setTimer, deleteTimer, changeInterval
      */
@@ -231,17 +216,14 @@ public:
     int setInterval(unsigned long d, timer_callback_p f, void* p);
 
     /**
-     * @brief Calls a function once, `d` milliseconds from now.
+     * @brief Calls a function once, `d` milliseconds from now. For example, turns a
+     * relay off a few seconds after the app turned it on.
      *
      * The timer frees its place after the call.
      *
      * @param d  The wait in milliseconds.
      * @param f  The function to call, with no parameters.
      * @return The number of the timer, or -1 when all 16 are taken.
-     *
-     * @par Where to call
-     * Wherever something has to happen later, for example inside
-     * PLYNX_WRITE() to turn a relay off after a few seconds.
      *
      * @code
      * PlynxTimer timer;
@@ -348,14 +330,12 @@ public:
     int setTimer(unsigned long d, timer_callback_p f, void* p, unsigned n);
 
     /**
-     * @brief Gives a running timer a new interval, counted from now.
+     * @brief Changes the interval of a running timer, counted from now. For
+     * example from a Slider in the app.
      *
      * @param numTimer  The number returned by setInterval() or the others.
      * @param d         The new interval in milliseconds.
      * @return true when the timer exists, false for a free place.
-     *
-     * @par App widget
-     * Often called from PLYNX_WRITE() of a Slider that sets the speed.
      *
      * @code
      * PlynxTimer timer;

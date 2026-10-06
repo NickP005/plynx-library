@@ -16,16 +16,9 @@
  * @brief Turns the LED widget of the app on and off, or sets how bright it
  * glows.
  *
- * Each call sends the value to the pin with Plynx.virtualWrite(). The LED
- * widget lights up for any value above 0. With brightness turned on in the
- * widget, a value from 0 to 255 sets how bright it glows.
- *
- * @par Where to call
- * Create it at the top level with the pin of the LED widget. Change it where
- * the state changes, never at every turn of loop().
- *
- * @par App widget
- * LED.
+ * The LED lights up for any value above 0. With brightness on in the widget, 0
+ * to 255 sets how bright. Change it when the state changes, not at every turn
+ * of loop().
  *
  * @code
  * WidgetLED pumpLed(V3);
@@ -49,8 +42,8 @@ class WidgetLED
 {
 public:
     /**
-     * @brief Ties the LED object to the virtual pin of the LED widget.
-     * @param vPin  The virtual pin, written V0, V1, V2 and so on.
+     * @brief The LED on the virtual pin of your LED widget.
+     * @param vPin  The virtual pin, such as V3.
      *
      * @code
      * WidgetLED led(V3);
@@ -62,8 +55,8 @@ public:
     {}
 
     /**
-     * @brief Gives the last value set on this board.
-     * @return The value, from 0 to 255. It starts at 0.
+     * @brief The last value the sketch gave this LED, from 0 to 255. It starts at 0.
+     * @return The value.
      *
      * @code
      * WidgetLED led(V3);
@@ -78,14 +71,14 @@ public:
      * }
      * @endcode
      *
-     * @note It remembers what the sketch set, and knows nothing about the app.
+     * @note A change made from the app is not counted here.
      */
     uint8_t getValue() const {
         return mValue;
     }
 
     /**
-     * @brief Sets the brightness of the LED widget.
+     * @brief Sets how bright the LED widget glows.
      * @param value  From 0 (off) to 255 (full).
      *
      * @code

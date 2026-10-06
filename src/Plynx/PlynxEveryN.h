@@ -77,8 +77,7 @@ typedef PlynxPeriodic<uint8_t,plynx_count_hours8>       PlynxEveryNHours;
  *
  * @param N  The interval in milliseconds.
  *
- * @par Where to call
- * Inside loop(), or inside a function that loop() calls at every turn.
+ * Call it inside loop(), or inside a function that loop() calls at every turn.
  *
  * @code
  * #define PLYNX_EXPERIMENTAL

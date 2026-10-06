@@ -22,12 +22,10 @@
  * own pin, used by nothing else. What this board writes to a virtual pin of
  * the other board runs there in its PLYNX_WRITE().
  *
- * @par Where to call
  * Create it at the top level, set the token in PLYNX_CONNECTED(), write from
  * a timer or a handler.
  *
- * @par App widget
- * None is needed. The other board has to be online.
+ * No widget is needed. The other board has to be online.
  *
  * @code
  * WidgetBridge garage(V20);
@@ -56,7 +54,7 @@ public:
     /**
      * @brief Creates a bridge on a virtual pin of this board used only as its
      * channel.
-     * @param vPin  A free virtual pin, written V0, V1, V2 and so on.
+     * @param vPin  A virtual pin of this board that nothing else uses, such as V20.
      *
      * @code
      * WidgetBridge garage(V20);
@@ -72,8 +70,7 @@ public:
      * @param token  The 32-character auth token of the other board. It has to
      *               belong to the same Plynx account.
      *
-     * @par Where to call
-     * Inside PLYNX_CONNECTED().
+     * Call it inside PLYNX_CONNECTED().
      *
      * @code
      * WidgetBridge garage(V20);
