@@ -40,6 +40,7 @@ class PlynxTransportEsp32_BLE :
 public:
     PlynxTransportEsp32_BLE()
         : mConn (false)
+        , mDropped (false)
         , mName ("Plynx")
     {}
 
@@ -91,6 +92,20 @@ public:
 
     void disconnect() {
         mConn = false;
+    }
+
+    // Il telefono e' andato via a sessione aperta. Lo segna il callback, che
+    // gira nel task del Bluetooth; lo raccoglie Plynx.run(), nel task di loop().
+    void markDropped() {
+        mDropped = true;
+    }
+
+    bool takeDropped() {
+        if (!mDropped) {
+            return false;
+        }
+        mDropped = false;
+        return true;
     }
 
     bool connected() {
@@ -148,6 +163,7 @@ private:
 
 private:
     bool mConn;
+    volatile bool mDropped;
     const char* mName;
 
     BLEServer *pServer;
@@ -248,6 +264,17 @@ public:
         conn.setDeviceName(name);
     }
 
+    // PLYNX_DISCONNECTED() quando il telefono se ne va. Prima non scattava mai:
+    // Plynx.disconnect() mette lo stato a DISCONNECTED senza chiamarlo, e da li'
+    // run() esce subito. Si chiama qui e non nel callback, perche' il codice
+    // dell'utente (fermare un motore) deve girare dove gira loop().
+    bool run(bool avail = false) {
+        if (conn.takeDropped()) {
+            PlynxOnDisconnected();
+        }
+        return Base::run(avail);
+    }
+
 };
 
 
@@ -264,6 +291,9 @@ void PlynxTransportEsp32_BLE::onConnect(BLEServer* pServer) {
 inline
 void PlynxTransportEsp32_BLE::onDisconnect(BLEServer* pServer) {
   PLYNX_LOG1(PLYNX_F("BLE disconnect"));
+  if (Plynx.connected()) {
+    markDropped();
+  }
   Plynx.disconnect();
   disconnect();
   // Ricomincia ad annunciarsi, altrimenti la scheda e collegabile UNA SOLA

@@ -389,7 +389,8 @@
  * @endcode
  *
  * @note It does not run after Plynx.disconnect(). Values sent while offline
- * are lost.
+ * are lost. On an ESP32 connected over Bluetooth it runs when the phone goes
+ * away, at the next Plynx.run().
  *
  * @see PLYNX_CONNECTED, PlynxProtocol::connected
  */

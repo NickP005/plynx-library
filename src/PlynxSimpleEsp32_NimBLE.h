@@ -90,6 +90,7 @@ class PlynxTransportEsp32_NimBLE :
 public:
     PlynxTransportEsp32_NimBLE()
         : mConn (false)
+        , mDropped (false)
         , mName ("Plynx")
     {}
 
@@ -172,6 +173,20 @@ public:
         mConn = false;
     }
 
+    // Il telefono e' andato via a sessione aperta. Lo segna il callback, che
+    // gira nel task del Bluetooth; lo raccoglie Plynx.run(), nel task di loop().
+    void markDropped() {
+        mDropped = true;
+    }
+
+    bool takeDropped() {
+        if (!mDropped) {
+            return false;
+        }
+        mDropped = false;
+        return true;
+    }
+
     bool connected() {
         return mConn;
     }
@@ -243,6 +258,7 @@ private:
 
 private:
     bool mConn;
+    volatile bool mDropped;
     const char* mName;
 
     NimBLEServer *pServer;
@@ -359,6 +375,17 @@ public:
         conn.setDeviceName(name);
     }
 
+    // PLYNX_DISCONNECTED() quando il telefono se ne va. Prima non scattava mai:
+    // Plynx.disconnect() mette lo stato a DISCONNECTED senza chiamarlo, e da li'
+    // run() esce subito. Si chiama qui e non nel callback, perche' il codice
+    // dell'utente (fermare un motore) deve girare dove gira loop().
+    bool run(bool avail = false) {
+        if (conn.takeDropped()) {
+            PlynxOnDisconnected();
+        }
+        return Base::run(avail);
+    }
+
 };
 
 
@@ -377,6 +404,9 @@ void PlynxTransportEsp32_NimBLE::onConnect(NimBLEServer* pServer, NimBLEConnInfo
 inline
 void PlynxTransportEsp32_NimBLE::onDisconnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo, int reason) {
   PLYNX_LOG1(PLYNX_F("BLE disconnect"));
+  if (Plynx.connected()) {
+    markDropped();
+  }
   Plynx.disconnect();
   disconnect();
   // Senza questo la scheda e collegabile una sola volta per accensione
@@ -398,6 +428,9 @@ void PlynxTransportEsp32_NimBLE::onConnect(NimBLEServer* pServer) {
 inline
 void PlynxTransportEsp32_NimBLE::onDisconnect(NimBLEServer* pServer) {
   PLYNX_LOG1(PLYNX_F("BLE disconnect"));
+  if (Plynx.connected()) {
+    markDropped();
+  }
   Plynx.disconnect();
   disconnect();
   // Senza questo la scheda e collegabile una sola volta per accensione
